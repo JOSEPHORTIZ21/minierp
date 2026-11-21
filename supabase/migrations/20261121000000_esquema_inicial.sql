@@ -198,6 +198,9 @@ declare
     v_subtotal numeric(14, 2);
     v_total_iva numeric(14, 2);
     v_numero   varchar(20);
+    -- La aplicación guarda fechas en hora de Colombia (JVM con America/Bogota); la semilla también.
+    -- localtimestamp usaría la zona de la sesión (UTC en Supabase) y dejaría las ventas 5 h en el futuro.
+    v_ahora    timestamp(6) := (now() at time zone 'America/Bogota');
 begin
     if exists (select 1 from minierp.categorias) then
         raise notice 'minierp ya tiene datos: se omite la semilla';
@@ -236,7 +239,7 @@ begin
     -- Inventario inicial en el kardex
     insert into minierp.movimientos_inventario
         (producto_id, tipo, concepto, cantidad, stock_anterior, stock_resultante, referencia, observacion, fecha)
-    select p.id, 'ENTRADA', 'INVENTARIO_INICIAL', p.stock, 0, p.stock, p.codigo, 'Inventario inicial', localtimestamp
+    select p.id, 'ENTRADA', 'INVENTARIO_INICIAL', p.stock, 0, p.stock, p.codigo, 'Inventario inicial', v_ahora
     from minierp.productos p
     where p.stock > 0;
 
@@ -257,7 +260,7 @@ begin
 
     for v_venta in select distinct n, documento from _semilla_ventas order by n loop
         insert into minierp.ventas (fecha, cliente_id, subtotal, total_iva, total, estado)
-        values (localtimestamp,
+        values (v_ahora,
                 (select id from minierp.clientes where documento = v_venta.documento),
                 0, 0, 0, 'COMPLETADA')
         returning id into v_venta_id;
@@ -284,7 +287,7 @@ begin
             insert into minierp.movimientos_inventario
                 (producto_id, tipo, concepto, cantidad, stock_anterior, stock_resultante, referencia, fecha)
             values (v_item.id, 'SALIDA', 'VENTA', v_item.cantidad, v_item.stock,
-                    v_item.stock - v_item.cantidad, v_numero, localtimestamp);
+                    v_item.stock - v_item.cantidad, v_numero, v_ahora);
 
             update minierp.productos set stock = stock - v_item.cantidad where id = v_item.id;
 

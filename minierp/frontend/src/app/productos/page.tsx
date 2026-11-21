@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { api, query } from "@/lib/api";
+import { puede } from "@/lib/permisos";
+import { useSesion } from "@/lib/sesion";
 import { formatoMoneda, mensajeError } from "@/lib/format";
 import type { Categoria, Page, Producto } from "@/lib/types";
 import { Alerta, Cargando, FilaVacia, PageHeader, Paginacion } from "@/components/ui";
@@ -19,6 +21,8 @@ export default function ProductosPage() {
 
 function ListadoProductos() {
   const searchParams = useSearchParams();
+  const rol = useSesion()?.usuario.rol ?? "CAJERO";
+  const gestiona = puede.gestionarCatalogo(rol);
   const [data, setData] = useState<Page<Producto> | null>(null);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [texto, setTexto] = useState("");
@@ -71,9 +75,11 @@ function ListadoProductos() {
   return (
     <>
       <PageHeader titulo="Productos" descripcion="Catálogo e inventario">
-        <Link href="/productos/nuevo" className="btn btn-primario">
-          Nuevo producto
-        </Link>
+        {gestiona && (
+          <Link href="/productos/nuevo" className="btn btn-primario">
+            Nuevo producto
+          </Link>
+        )}
       </PageHeader>
 
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
@@ -169,12 +175,16 @@ function ListadoProductos() {
                         <Link href={`/productos/${p.id}/kardex`} className="btn-enlace">
                           Kardex
                         </Link>
-                        <Link href={`/productos/${p.id}/editar`} className="btn-enlace">
-                          Editar
-                        </Link>
-                        <button onClick={() => cambiarEstado(p)} className={p.activo ? "text-sm font-medium text-red-600 hover:underline" : "btn-enlace"}>
-                          {p.activo ? "Desactivar" : "Activar"}
-                        </button>
+                        {gestiona && (
+                          <>
+                            <Link href={`/productos/${p.id}/editar`} className="btn-enlace">
+                              Editar
+                            </Link>
+                            <button onClick={() => cambiarEstado(p)} className={p.activo ? "text-sm font-medium text-red-600 hover:underline" : "btn-enlace"}>
+                              {p.activo ? "Desactivar" : "Activar"}
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

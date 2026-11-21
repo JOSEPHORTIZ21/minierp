@@ -4,12 +4,15 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api } from "@/lib/api";
+import { puede } from "@/lib/permisos";
+import { useSesion } from "@/lib/sesion";
 import { formatoFecha, formatoMoneda, mensajeError } from "@/lib/format";
 import type { Venta } from "@/lib/types";
 import { Alerta, BadgeEstado, Cargando } from "@/components/ui";
 
 /** Factura imprimible (Ctrl+P o el botón "Imprimir" → Guardar como PDF). */
 export default function DetalleVentaPage() {
+  const puedeAnular = puede.anularVentas(useSesion()?.usuario.rol ?? "CAJERO");
   const { id } = useParams<{ id: string }>();
   const [venta, setVenta] = useState<Venta | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +39,7 @@ export default function DetalleVentaPage() {
           ← Ventas
         </Link>
         <div className="flex flex-wrap gap-2">
-          {venta.estado === "COMPLETADA" && (
+          {puedeAnular && venta.estado === "COMPLETADA" && (
             <button className="btn btn-peligro" onClick={anular}>
               Anular
             </button>

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { rutaPermitida } from "@/lib/permisos";
+import { cerrarSesion, useSesion } from "@/lib/sesion";
 
 const secciones = [
   {
@@ -31,7 +33,13 @@ const secciones = [
       { href: "/proveedores", texto: "Proveedores" },
     ],
   },
+  {
+    titulo: "Administración",
+    enlaces: [{ href: "/usuarios", texto: "Usuarios" }],
+  },
 ];
+
+const ROLES = { ADMIN: "Administrador", CAJERO: "Cajero" } as const;
 
 /**
  * Navegación principal.
@@ -40,14 +48,27 @@ const secciones = [
  */
 export default function Sidebar() {
   const pathname = usePathname();
+  const sesion = useSesion();
   const [abierto, setAbierto] = useState(false);
+  const rol = sesion?.usuario.rol ?? "CAJERO";
+
+  // Solo las secciones y enlaces que el rol puede usar
+  const visibles = secciones
+    .map((s) => ({ ...s, enlaces: s.enlaces.filter((e) => rutaPermitida(rol, e.href)) }))
+    .filter((s) => s.enlaces.length > 0);
+
+  /** MarcoApp detecta que no hay sesión y lleva al login (recordando esta página para volver). */
+  function salir() {
+    cerrarSesion();
+  }
 
   // El enlace activo es el de ruta más larga que coincide (así /ventas/nueva no marca también /ventas)
-  const activo = secciones
+  const activo = visibles
     .flatMap((s) => s.enlaces)
     .filter((e) => (e.href === "/" ? pathname === "/" : pathname === e.href || pathname.startsWith(e.href + "/")))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
-  const tituloActual = secciones.flatMap((s) => s.enlaces).find((e) => e.href === activo)?.texto ?? "Mini-ERP";
+  const tituloActual =
+    pathname === "/cuenta" ? "Mi cuenta" : visibles.flatMap((s) => s.enlaces).find((e) => e.href === activo)?.texto ?? "Mini-ERP";
 
   // Cierra el panel al navegar
   useEffect(() => {
@@ -120,7 +141,7 @@ export default function Sidebar() {
           </button>
         </div>
         <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-5">
-          {secciones.map((seccion) => (
+          {visibles.map((seccion) => (
             <div key={seccion.titulo}>
               <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">{seccion.titulo}</p>
               <ul className="space-y-1">
@@ -141,6 +162,38 @@ export default function Sidebar() {
             </div>
           ))}
         </nav>
+
+        {sesion && (
+          <div className="border-t border-slate-800 px-3 py-4">
+            <div className="flex items-center gap-3 px-3">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-sm font-bold text-white" aria-hidden="true">
+                {sesion.usuario.nombre.trim().charAt(0).toUpperCase()}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium text-white">{sesion.usuario.nombre}</p>
+                <p className="text-xs text-slate-400">{ROLES[sesion.usuario.rol]}</p>
+              </div>
+            </div>
+            <div className="mt-3 flex gap-2 px-3">
+              <Link
+                href="/cuenta"
+                aria-current={pathname === "/cuenta" ? "page" : undefined}
+                className={`flex-1 rounded-lg px-2 py-2 text-center text-xs font-medium transition-colors ${
+                  pathname === "/cuenta" ? "bg-indigo-600 text-white" : "bg-slate-800 text-slate-200 hover:bg-slate-700"
+                }`}
+              >
+                Mi cuenta
+              </Link>
+              <button
+                type="button"
+                onClick={salir}
+                className="flex-1 rounded-lg bg-slate-800 px-2 py-2 text-xs font-medium text-slate-200 transition-colors hover:bg-red-600 hover:text-white"
+              >
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        )}
       </aside>
     </>
   );

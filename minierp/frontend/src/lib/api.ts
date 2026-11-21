@@ -1,4 +1,5 @@
 // Cliente HTTP centralizado para hablar con la API de Spring Boot
+import { cerrarSesion, obtenerSesion } from "./sesion";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
@@ -16,15 +17,26 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const sesion = obtenerSesion();
   let res: Response;
   try {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+      headers: {
+        "Content-Type": "application/json",
+        ...(sesion ? { Authorization: `Bearer ${sesion.token}` } : {}),
+        ...(init.headers ?? {}),
+      },
       cache: "no-store",
     });
   } catch {
-    throw new ApiError(0, "No se pudo conectar con el servidor. ¿Está corriendo el backend en el puerto 8080?");
+    throw new ApiError(0, "No se pudo conectar con el servidor. Revisa tu conexión o intenta de nuevo en un momento.");
+  }
+
+  // Token vencido, inválido o usuario desactivado: se cierra la sesión y MarcoApp lleva al login.
+  // (En el propio login un 401 solo significa credenciales incorrectas.)
+  if (res.status === 401 && path !== "/auth/login") {
+    cerrarSesion();
   }
 
   if (!res.ok) {

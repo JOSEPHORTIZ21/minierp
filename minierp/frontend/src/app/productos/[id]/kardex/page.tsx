@@ -4,6 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { api, erroresCampos } from "@/lib/api";
+import { puede } from "@/lib/permisos";
+import { useSesion } from "@/lib/sesion";
 import { aNumero, formatoFecha, formatoMoneda, mensajeError } from "@/lib/format";
 import type { ConceptoMovimiento, Movimiento, Producto, TipoMovimiento } from "@/lib/types";
 import { Alerta, Campo, Cargando, FilaVacia, PageHeader, StatCard } from "@/components/ui";
@@ -17,6 +19,7 @@ const conceptos: Record<ConceptoMovimiento, string> = {
 };
 
 export default function KardexPage() {
+  const puedeAjustar = puede.ajustarInventario(useSesion()?.usuario.rol ?? "CAJERO");
   const { id } = useParams<{ id: string }>();
   const [producto, setProducto] = useState<Producto | null>(null);
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
@@ -79,7 +82,7 @@ export default function KardexPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <div className="tarjeta overflow-x-auto p-0 xl:col-span-2">
+        <div className={`tarjeta overflow-x-auto p-0 ${puedeAjustar ? "xl:col-span-2" : "xl:col-span-3"}`}>
           <table className="tabla tabla-tarjetas">
             <thead>
               <tr>
@@ -115,31 +118,33 @@ export default function KardexPage() {
           </table>
         </div>
 
-        {/* En móvil y tablet el ajuste va antes del historial, que puede ser largo */}
-        <form onSubmit={registrarAjuste} className="tarjeta order-first h-fit space-y-4 xl:order-none">
-          <h2 className="font-semibold text-slate-900">Ajuste de inventario</h2>
-          <p className="text-xs text-slate-500">Úsalo para conteos físicos, productos dañados o vencidos.</p>
-          <Campo label="Tipo" error={errores.tipo}>
-            <select className="input" value={ajuste.tipo} onChange={(e) => setAjuste({ ...ajuste, tipo: e.target.value as TipoMovimiento })}>
-              <option value="ENTRADA">Entrada (+)</option>
-              <option value="SALIDA">Salida (−)</option>
-            </select>
-          </Campo>
-          <Campo label="Cantidad" error={errores.cantidad}>
-            <input className="input" type="number" min="1" value={ajuste.cantidad} onChange={(e) => setAjuste({ ...ajuste, cantidad: e.target.value })} />
-          </Campo>
-          <Campo label="Motivo" error={errores.observacion}>
-            <input
-              className="input"
-              placeholder="Ej: 2 unidades vencidas"
-              value={ajuste.observacion}
-              onChange={(e) => setAjuste({ ...ajuste, observacion: e.target.value })}
-            />
-          </Campo>
-          <button className="btn btn-primario w-full" type="submit">
-            Registrar ajuste
-          </button>
-        </form>
+        {/* Solo ADMIN. En móvil y tablet el ajuste va antes del historial, que puede ser largo */}
+        {puedeAjustar && (
+          <form onSubmit={registrarAjuste} className="tarjeta order-first h-fit space-y-4 xl:order-none">
+            <h2 className="font-semibold text-slate-900">Ajuste de inventario</h2>
+            <p className="text-xs text-slate-500">Úsalo para conteos físicos, productos dañados o vencidos.</p>
+            <Campo label="Tipo" error={errores.tipo}>
+              <select className="input" value={ajuste.tipo} onChange={(e) => setAjuste({ ...ajuste, tipo: e.target.value as TipoMovimiento })}>
+                <option value="ENTRADA">Entrada (+)</option>
+                <option value="SALIDA">Salida (−)</option>
+              </select>
+            </Campo>
+            <Campo label="Cantidad" error={errores.cantidad}>
+              <input className="input" type="number" min="1" value={ajuste.cantidad} onChange={(e) => setAjuste({ ...ajuste, cantidad: e.target.value })} />
+            </Campo>
+            <Campo label="Motivo" error={errores.observacion}>
+              <input
+                className="input"
+                placeholder="Ej: 2 unidades vencidas"
+                value={ajuste.observacion}
+                onChange={(e) => setAjuste({ ...ajuste, observacion: e.target.value })}
+              />
+            </Campo>
+            <button className="btn btn-primario w-full" type="submit">
+              Registrar ajuste
+            </button>
+          </form>
+        )}
       </div>
     </>
   );

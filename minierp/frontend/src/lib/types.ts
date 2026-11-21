@@ -155,3 +155,20 @@ export interface Dashboard {
   topProductos: { productoId: number; nombre: string; cantidadVendida: number; totalVendido: number }[];
   alertasStock: Producto[];
 }
+
+export type Rol = "ADMIN" | "CAJERO";
+
+export interface Usuario {
+  id: number;
+  email: string;
+  nombre: string;
+  rol: Rol;
+  activo: boolean;
+  creadoEn: string;
+}
+
+export interface LoginResponse {
+  token: string;
+  expiraEn: string;
+  usuario: Usuario;
+}

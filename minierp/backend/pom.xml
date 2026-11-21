@@ -19,6 +19,10 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- La versión que trae Spring Boot 3.3.5 (1.18.34) no compila con JDK 25 -->
+        <lombok.version>1.18.42</lombok.version>
+        <!-- Mockito necesita un Byte Buddy que reconozca JDK 25 para hacer mocks de clases -->
+        <byte-buddy.version>1.17.8</byte-buddy.version>
     </properties>
 
     <dependencies>
@@ -78,6 +82,21 @@
 
     <build>
         <plugins>
+            <!-- Desde JDK 23, javac no ejecuta procesadores de anotaciones que solo estén en el classpath:
+                 Lombok debe declararse aquí o el proyecto no compila con JDK 23+. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

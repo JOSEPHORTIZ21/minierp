@@ -29,7 +29,7 @@ export default function DashboardPage() {
         </Link>
       </PageHeader>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
         <StatCard titulo="Ventas de hoy" valor={formatoMoneda(data.ventasHoy)} />
         <StatCard
           titulo="Ventas del mes"
@@ -48,16 +48,16 @@ export default function DashboardPage() {
       <div className="mt-6 grid gap-6 xl:grid-cols-3">
         <div className="tarjeta xl:col-span-2">
           <h2 className="mb-4 font-semibold text-slate-900">Ventas de los últimos 7 días</h2>
-          <div className="h-72">
+          <div className="-ml-2 h-56 sm:ml-0 sm:h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={grafica}>
+              <BarChart data={grafica} margin={{ top: 5, right: 5, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="dia" tickLine={false} axisLine={false} fontSize={12} />
                 <YAxis
                   tickLine={false}
                   axisLine={false}
                   fontSize={12}
-                  width={60}
+                  width={48}
                   tickFormatter={(v: number) => `$${Math.round(v / 1000)}k`}
                 />
                 <Tooltip formatter={(v) => formatoMoneda(Number(v))} cursor={{ fill: "#eef2ff" }} />
@@ -75,8 +75,8 @@ export default function DashboardPage() {
             <ol className="space-y-3">
               {data.topProductos.map((p, i) => (
                 <li key={p.productoId} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="flex items-center gap-3">
-                    <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
+                  <span className="flex min-w-0 items-center gap-3">
+                    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
                       {i + 1}
                     </span>
                     {p.nombre}
@@ -100,7 +100,7 @@ export default function DashboardPage() {
               Ver todos
             </Link>
           </div>
-          <table className="tabla">
+          <table className="tabla tabla-tarjetas">
             <thead>
               <tr>
                 <th>Producto</th>
@@ -112,14 +112,14 @@ export default function DashboardPage() {
             <tbody>
               {data.alertasStock.map((p) => (
                 <tr key={p.id}>
-                  <td>
+                  <td className="celda-titulo">
                     <Link href={`/productos/${p.id}/kardex`} className="btn-enlace">
                       {p.nombre}
                     </Link>
                   </td>
-                  <td>{p.categoriaNombre}</td>
-                  <td className="text-right font-semibold text-amber-600">{p.stock}</td>
-                  <td className="text-right">{p.stockMinimo}</td>
+                  <td data-label="Categoría">{p.categoriaNombre}</td>
+                  <td data-label="Stock" className="text-right font-semibold text-amber-600">{p.stock}</td>
+                  <td data-label="Mínimo" className="text-right">{p.stockMinimo}</td>
                 </tr>
               ))}
             </tbody>

@@ -87,12 +87,12 @@ export default function NuevaVentaPage() {
       <PageHeader titulo="Punto de venta" descripcion="Busca productos y agrégalos a la venta" />
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
 
-      <div className="grid gap-6 xl:grid-cols-3">
+      <div className={`grid gap-6 xl:grid-cols-3 ${carrito.length > 0 ? "pb-20 xl:pb-0" : ""}`}>
         <div className="space-y-6 xl:col-span-2">
           <BuscadorProductos onSeleccionar={agregar} />
 
           <div className="tarjeta overflow-x-auto p-0">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Producto</th>
@@ -106,20 +106,21 @@ export default function NuevaVentaPage() {
               <tbody>
                 {carrito.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="py-10 text-center text-slate-500">
+                    <td colSpan={6} className="justify-center py-10 text-center text-slate-500">
                       El carrito está vacío
                     </td>
                   </tr>
                 )}
                 {carrito.map((i) => (
                   <tr key={i.producto.id}>
-                    <td>
+                    <td className="celda-titulo">
                       <p className="font-medium">{i.producto.nombre}</p>
                       <p className="text-xs text-slate-500">Disponible: {i.producto.stock}</p>
                     </td>
-                    <td className="text-right">{formatoMoneda(i.producto.precioVenta)}</td>
-                    <td>
+                    <td data-label="Precio" className="text-right">{formatoMoneda(i.producto.precioVenta)}</td>
+                    <td data-label="Cantidad">
                       <input
+                        inputMode="numeric"
                         type="number"
                         min={1}
                         max={i.producto.stock}
@@ -128,11 +129,16 @@ export default function NuevaVentaPage() {
                         className="input text-center"
                       />
                     </td>
-                    <td className="text-right">{i.producto.porcentajeIva}%</td>
-                    <td className="text-right font-medium">{formatoMoneda(i.producto.precioVenta * i.cantidad)}</td>
+                    <td data-label="IVA" className="text-right">{i.producto.porcentajeIva}%</td>
+                    <td data-label="Subtotal" className="text-right font-medium">{formatoMoneda(i.producto.precioVenta * i.cantidad)}</td>
                     <td className="text-right">
-                      <button onClick={() => quitar(i.producto.id)} className="text-lg text-slate-400 hover:text-red-600" aria-label="Quitar">
-                        ×
+                      <button
+                        onClick={() => quitar(i.producto.id)}
+                        className="inline-flex h-9 items-center justify-center gap-1 rounded-lg px-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        aria-label={`Quitar ${i.producto.nombre}`}
+                      >
+                        <span className="text-lg leading-none">×</span>
+                        <span className="text-sm md:hidden">Quitar</span>
                       </button>
                     </td>
                   </tr>
@@ -142,7 +148,7 @@ export default function NuevaVentaPage() {
           </div>
         </div>
 
-        <div className="tarjeta h-fit space-y-5">
+        <div id="resumen-venta" className="tarjeta h-fit scroll-mt-20 space-y-5 xl:sticky xl:top-8">
           <h2 className="font-semibold text-slate-900">Resumen</h2>
           <label className="block">
             <span className="label">Cliente</span>
@@ -181,6 +187,24 @@ export default function NuevaVentaPage() {
           )}
         </div>
       </div>
+
+      {/* Móvil y tablet: el total siempre a la vista; "Cobrar" lleva al resumen (cliente y confirmación) */}
+      {carrito.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-10 flex items-center justify-between gap-4 border-t border-slate-200 bg-white px-4 py-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)] xl:hidden print:hidden">
+          <div>
+            <p className="text-xs text-slate-500">
+              {carrito.reduce((n, i) => n + i.cantidad, 0)} unidades · Total
+            </p>
+            <p className="text-lg font-bold text-slate-900">{formatoMoneda(totales.subtotal + totales.iva)}</p>
+          </div>
+          <button
+            className="btn btn-primario px-6 py-3"
+            onClick={() => document.getElementById("resumen-venta")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          >
+            Cobrar
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -78,15 +78,15 @@ function ListadoProductos() {
 
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
 
-      <div className="tarjeta mb-4 flex flex-wrap items-end gap-3">
-        <form onSubmit={aplicarBusqueda} className="flex min-w-64 flex-1 gap-2">
+      <div className="tarjeta mb-4 flex flex-wrap items-center gap-3">
+        <form onSubmit={aplicarBusqueda} className="flex w-full gap-2 sm:w-auto sm:min-w-64 sm:flex-1">
           <input className="input" placeholder="Buscar por nombre o código..." value={texto} onChange={(e) => setTexto(e.target.value)} />
           <button className="btn btn-secundario" type="submit">
             Buscar
           </button>
         </form>
         <select
-          className="input w-48"
+          className="input w-full sm:w-48"
           value={categoriaId}
           onChange={(e) => {
             setCategoriaId(e.target.value);
@@ -129,15 +129,15 @@ function ListadoProductos() {
           <Cargando />
         ) : (
           <>
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Código</th>
                   <th>Nombre</th>
                   <th>Categoría</th>
-                  <th className="text-right">P. compra</th>
+                  <th className="text-right md:max-xl:hidden">P. compra</th>
                   <th className="text-right">P. venta</th>
-                  <th className="text-right">IVA</th>
+                  <th className="text-right md:max-xl:hidden">IVA</th>
                   <th className="text-right">Stock</th>
                   <th className="text-right">Acciones</th>
                 </tr>
@@ -146,16 +146,16 @@ function ListadoProductos() {
                 {data.content.length === 0 && <FilaVacia columnas={8} />}
                 {data.content.map((p) => (
                   <tr key={p.id} className={p.activo ? "" : "opacity-50"}>
-                    <td className="font-mono text-xs">{p.codigo}</td>
-                    <td className="font-medium">
+                    <td data-label="Código" className="font-mono text-xs">{p.codigo}</td>
+                    <td className="celda-titulo font-medium">
                       {p.nombre}
                       {!p.activo && <span className="ml-2 text-xs text-slate-500">(inactivo)</span>}
                     </td>
-                    <td>{p.categoriaNombre}</td>
-                    <td className="text-right">{formatoMoneda(p.precioCompra)}</td>
-                    <td className="text-right">{formatoMoneda(p.precioVenta)}</td>
-                    <td className="text-right">{p.porcentajeIva}%</td>
-                    <td className="text-right">
+                    <td data-label="Categoría">{p.categoriaNombre}</td>
+                    <td data-label="P. compra" className="text-right md:max-xl:hidden">{formatoMoneda(p.precioCompra)}</td>
+                    <td data-label="P. venta" className="text-right">{formatoMoneda(p.precioVenta)}</td>
+                    <td data-label="IVA" className="text-right md:max-xl:hidden">{p.porcentajeIva}%</td>
+                    <td data-label="Stock" className="text-right">
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           p.stockBajo ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-700"
@@ -165,7 +165,7 @@ function ListadoProductos() {
                       </span>
                     </td>
                     <td>
-                      <div className="flex justify-end gap-3">
+                      <div className="flex justify-end gap-4 py-1 md:gap-3 md:py-0">
                         <Link href={`/productos/${p.id}/kardex`} className="btn-enlace">
                           Kardex
                         </Link>

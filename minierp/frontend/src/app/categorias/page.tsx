@@ -4,7 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, erroresCampos } from "@/lib/api";
 import { mensajeError } from "@/lib/format";
 import type { Categoria } from "@/lib/types";
-import { Alerta, Campo, Cargando, FilaVacia, PageHeader } from "@/components/ui";
+import { mostrarFormulario } from "@/lib/dom";
+import { Alerta, Campo,Cargando, FilaVacia, PageHeader } from "@/components/ui";
 
 const vacio = { nombre: "", descripcion: "" };
 
@@ -25,6 +26,7 @@ export default function CategoriasPage() {
     setEditandoId(c.id);
     setForm({ nombre: c.nombre, descripcion: c.descripcion ?? "" });
     setErrores({});
+    mostrarFormulario("formulario-categoria");
   }
 
   function cancelar() {
@@ -67,12 +69,12 @@ export default function CategoriasPage() {
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
       <Alerta tipo="exito" mensaje={exito} onCerrar={() => setExito(null)} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="tarjeta overflow-x-auto p-0 lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="tarjeta overflow-x-auto p-0 xl:col-span-2">
           {!categorias ? (
             <Cargando />
           ) : (
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Nombre</th>
@@ -84,10 +86,10 @@ export default function CategoriasPage() {
                 {categorias.length === 0 && <FilaVacia columnas={3} />}
                 {categorias.map((c) => (
                   <tr key={c.id}>
-                    <td className="font-medium">{c.nombre}</td>
-                    <td className="text-slate-500">{c.descripcion}</td>
+                    <td className="celda-titulo font-medium">{c.nombre}</td>
+                    <td className="text-left text-slate-500">{c.descripcion}</td>
                     <td>
-                      <div className="flex justify-end gap-3">
+                      <div className="flex justify-end gap-4 py-1 md:gap-3 md:py-0">
                         <button className="btn-enlace" onClick={() => editar(c)}>
                           Editar
                         </button>
@@ -103,7 +105,7 @@ export default function CategoriasPage() {
           )}
         </div>
 
-        <form onSubmit={guardar} className="tarjeta h-fit space-y-4">
+        <form id="formulario-categoria" onSubmit={guardar} className="tarjeta h-fit scroll-mt-20 space-y-4">
           <h2 className="font-semibold text-slate-900">{editandoId ? "Editar categoría" : "Nueva categoría"}</h2>
           <Campo label="Nombre" error={errores.nombre}>
             <input className="input" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />

@@ -132,7 +132,7 @@ export default function ProductoForm({ producto }: { producto?: Producto }) {
         </p>
       )}
 
-      <div className="flex justify-end gap-2 border-t border-slate-100 pt-4">
+      <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
         <button type="button" className="btn btn-secundario" onClick={() => router.push("/productos")}>
           Cancelar
         </button>

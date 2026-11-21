@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { api, erroresCampos, query } from "@/lib/api";
 import { mensajeError } from "@/lib/format";
+import { mostrarFormulario } from "@/lib/dom";
 import type { Page } from "@/lib/types";
 import { Alerta, Campo, Cargando, FilaVacia, PageHeader, Paginacion } from "@/components/ui";
 
@@ -51,6 +52,7 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
     setEditandoId(r.id);
     setForm(Object.fromEntries(campos.map((c) => [c.clave, String(r[c.clave] ?? "")])));
     setErrores({});
+    mostrarFormulario("formulario-tercero");
   }
 
   function cancelar() {
@@ -95,8 +97,8 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
       <Alerta tipo="exito" mensaje={exito} onCerrar={() => setExito(null)} />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
           <form
             className="mb-4 flex gap-2"
             onSubmit={(e) => {
@@ -116,7 +118,7 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
               <Cargando />
             ) : (
               <>
-                <table className="tabla">
+                <table className="tabla tabla-tarjetas">
                   <thead>
                     <tr>
                       {columnas.map((c) => (
@@ -129,11 +131,20 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
                     {data.content.length === 0 && <FilaVacia columnas={columnas.length + 1} />}
                     {data.content.map((r) => (
                       <tr key={r.id}>
-                        {columnas.map((c) => (
-                          <td key={c.clave}>{r[c.clave] ?? "—"}</td>
-                        ))}
+                        {columnas.map((c, i) =>
+                          // La segunda columna (nombre / razón social) es el título de la tarjeta en móvil
+                          i === 1 ? (
+                            <td key={c.clave} className="celda-titulo font-medium">
+                              {r[c.clave] ?? "—"}
+                            </td>
+                          ) : (
+                            <td key={c.clave} data-label={c.etiqueta} className="break-all md:break-normal">
+                              {r[c.clave] ?? "—"}
+                            </td>
+                          ),
+                        )}
                         <td>
-                          <div className="flex justify-end gap-3">
+                          <div className="flex justify-end gap-4 py-1 md:gap-3 md:py-0">
                             <button className="btn-enlace" onClick={() => editar(r)}>
                               Editar
                             </button>
@@ -152,7 +163,7 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
           </div>
         </div>
 
-        <form onSubmit={guardar} className="tarjeta h-fit space-y-4">
+        <form id="formulario-tercero" onSubmit={guardar} className="tarjeta h-fit scroll-mt-20 space-y-4">
           <h2 className="font-semibold capitalize text-slate-900">{editandoId ? `Editar ${singular}` : `Nuevo ${singular}`}</h2>
           {campos.map((c) => (
             <Campo key={c.clave} label={c.etiqueta} error={errores[c.clave]}>

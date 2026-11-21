@@ -3,7 +3,7 @@
 - **Fecha:** 2026-11-21
 - **Alcance:** `minierp/backend` (Spring Boot), configuración de perfiles, migración de Supabase y archivos versionados. El frontend se revisó en lo que afecta a la API (tamaños de página, secretos en `.env`, `dangerouslySetInnerHTML`).
 - **Método:** revisión del código guiada por la skill `backend-seguro`, sondas HTTP contra el backend con el perfil `prod` sobre PostgreSQL 16 en Docker (con la migración aplicada) antes y después de corregir, y pruebas unitarias.
-- **Resultado:** 13 hallazgos: 9 corregidos y 4 justificados. `mvn test`: 13 pruebas en verde con JDK 21 y JDK 25.
+- **Resultado:** 14 hallazgos: 10 corregidos y 4 justificados. `mvn verify`: 13 pruebas unitarias y 47 de integración (PostgreSQL real con Testcontainers) en verde.
 
 ## Resumen
 
@@ -22,6 +22,7 @@
 | A11 | Swagger UI público en producción | Baja | Justificado |
 | A12 | Credenciales `root/root` en `application-mysql.properties` y `docker-compose.yml` | Baja | Justificado |
 | A13 | Faltaban pruebas de la anulación y de los límites de entrada | Baja | Corregido |
+| A14 | Zona horaria inconsistente: semilla en UTC, JVM de Render en UTC y negocio en Colombia | Media | Corregido |
 
 ## Detalle
 
@@ -79,6 +80,12 @@ Con el JDK 25 instalado, `mvn test` fallaba con cientos de errores `cannot find 
 ### A13 · Pruebas insuficientes — Corregido
 Solo existía `InventarioServiceTest`.
 **Corrección:** `VentaServiceTest` (anulación con bloqueo, doble anulación, venta inexistente), `LimitesValidacionTest` (topes de ítems, cantidades y dígitos) y un caso de desborde en `InventarioServiceTest`.
+
+**Ampliación:** pruebas de integración en `integracion/*IT` (`mvn verify`), una por criterio de `docs/specs/`, contra PostgreSQL real. Para comprobar que detectan A2, se quitó temporalmente el bloqueo: `c11_anulacionesSimultaneas_devuelvenElStockUnaSolaVez` falló con `[200, 200, 200, 200]`, es decir, cuatro anulaciones aceptadas.
+
+### A14 · Zona horaria inconsistente — Corregido
+Encontrado por `VentasIT.c13`. La semilla de la migración usaba `localtimestamp`, que en PostgreSQL de Supabase es UTC, mientras la aplicación guarda `LocalDateTime` con la zona de la JVM. En una máquina en Colombia, las ventas semilla quedaban 5 horas "en el futuro" y salían primero en el listado. En Render, la JVM corre en UTC: desde las 7 p. m. de Colombia, el dashboard contaría las ventas de "hoy" como del día siguiente.
+**Corrección:** la semilla usa `now() at time zone 'America/Bogota'`, el `Dockerfile` arranca la JVM con `-Duser.timezone=America/Bogota` y Failsafe usa la misma zona en las pruebas.
 
 ## Controles verificados sin hallazgos
 - Consultas parametrizadas: `Specification`, consultas derivadas y JPQL con `:param`; no hay SQL construido con texto del usuario.

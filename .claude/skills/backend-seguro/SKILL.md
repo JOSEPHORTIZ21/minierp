@@ -39,6 +39,7 @@ Antes de dar por terminado un cambio en el backend, recorre esta lista y corrige
 - [ ] Los logs de error no imprimen cuerpos de petición ni datos personales.
 
 ## 5. Verificación
-- [ ] `mvn test` en verde (con JDK 17–25).
+- [ ] `mvn verify` en verde (unitarias + integración con Testcontainers; requiere Docker).
+- [ ] Toda regla nueva tiene su prueba `cN_` en la clase `*IT` de su spec, incluida la concurrente si la regla depende de un estado (stock, anulación).
 - [ ] Si cambiaste un contrato: actualiza `docs/contratos/api.md`, la spec en `docs/specs/` y `frontend/src/lib/types.ts`.
 - [ ] Prueba manual de los errores del endpoint nuevo: cuerpo vacío (400), id inexistente (404) y la regla de negocio (409/422).

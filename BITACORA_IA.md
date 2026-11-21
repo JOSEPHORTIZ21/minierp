@@ -11,6 +11,7 @@ Fecha: 2026-11-21.
 | 2 | Crear los entregables de la unidad: modelo de datos, contrato de la API, specs, migración con RLS y semilla, skill `backend-seguro`, sección Backend, front con datos reales, auditoría, bitácora | El resto de esta rama, un commit por tarea |
 | 3 | Decisión de arquitectura (pregunta de la IA): ¿el front habla con Supabase o solo con el backend? → **Solo backend** | RLS en todas las tablas **sin políticas**; el front sigue usando la API de Spring |
 | 4 | Decisión de flujo (pregunta de la IA): ¿quién hace los commits? → **La IA, en una rama, sin push** | Rama `entregables-unidad`; el despliegue queda a cargo del equipo |
+| 5 | "¿Pruebas de integración o e2e, cuál es mejor y por qué?" → integración primero; luego "Sí, integración" | 47 pruebas `*IT` con Testcontainers y la migración real, una por criterio de las specs. Encontraron un hallazgo nuevo (A14, zona horaria) |
 
 Instrucciones internas que guiaron el trabajo y que conviene reutilizar como prompts:
 - "Antes de documentar, lee las entidades, los servicios y los DTO completos; no documentes de memoria."

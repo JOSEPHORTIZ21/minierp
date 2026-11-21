@@ -8,14 +8,16 @@ El código vive en `minierp/`: `minierp/backend` (Spring Boot, puerto 8080) y `m
 
 ## Comandos
 
-Backend (`minierp/backend`, Java 17, Maven; no hay wrapper `mvnw`):
+Backend (`minierp/backend`, Java 17+ (compila hasta JDK 25), Maven; no hay wrapper `mvnw`):
 ```bash
 mvn spring-boot:run                                        # H2 por defecto
 mvn spring-boot:run -Dspring-boot.run.profiles=mysql       # MySQL (docker compose up -d en minierp/)
-mvn test                                                   # todas las pruebas
+mvn test                                                   # pruebas unitarias (*Test), sin Docker
 mvn test -Dtest=InventarioServiceTest                      # una clase
 mvn test -Dtest=InventarioServiceTest#registrarSalida_descuentaStockYGuardaMovimiento  # un método
-mvn package -DskipTests
+mvn verify                                                 # unitarias + integración (*IT), requiere Docker
+mvn verify -Dtest=NoExiste -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=VentasIT   # solo una clase IT
+mvn package -DskipTests                                    # omite ambas
 ```
 - Swagger: http://localhost:8080/swagger-ui.html · consola H2: http://localhost:8080/h2-console (`jdbc:h2:file:./data/minierp`, usuario `sa`, sin contraseña).
 
@@ -59,10 +61,12 @@ Capas: `controller` → `service` → `repository` → `entity`, con `dto` separ
 ### Seguridad y cambios de esquema
 - La API no tiene autenticación: todo endpoint es público. La validación de los DTO (límites de texto, cantidades hasta 100 000, montos `@Digits(12,2)`, listas de hasta 100 ítems) y el tamaño máximo de página (100) son la primera línea de defensa; no los relajes.
 - Cualquier entidad o columna nueva necesita una migración nueva en `supabase/migrations/` con RLS activo. Si falta, `prod` no arranca porque `validate` falla.
-- Para probar la migración y el perfil `prod` en local: levanta `postgres:16` en Docker, aplica el `.sql` con `psql` y arranca el jar con `SPRING_PROFILES_ACTIVE=prod` y las variables `DB_*` apuntando al contenedor.
+- Las fechas son `LocalDateTime` en hora de Colombia: la JVM corre con `-Duser.timezone=America/Bogota` (Dockerfile y Failsafe), y la semilla de la migración usa `now() at time zone 'America/Bogota'`. No uses `localtimestamp`/`now()` sin zona en SQL.
 
 ### Pruebas
-Unitarias con Mockito (`@ExtendWith(MockitoExtension.class)`), sin levantar Spring ni la base de datos.
+- **Unitarias** (`*Test`, `mvn test`): Mockito (`@ExtendWith(MockitoExtension.class)`), sin Spring ni base de datos.
+- **Integración** (`src/test/java/com/minierp/integracion/*IT`, `mvn verify`, Failsafe): extienden `IntegracionBase`, que levanta la app completa contra `postgres:16-alpine` en Testcontainers, creado con **todos los `.sql` de `supabase/migrations/`** y `ddl-auto=validate`. Un contenedor compartido por todas las clases; cada prueba crea sus datos con `unico(...)` para no depender del orden ni de la semilla. Hay una clase por spec de `docs/specs/` y los métodos se nombran `cN_…` según el criterio N. La concurrencia (`VentasIT`) usa `java.net.http.HttpClient` contra el puerto real, no MockMvc.
+- Si agregas un criterio a una spec, agrega su prueba `cN_` en la clase IT correspondiente.
 
 ## Arquitectura del frontend (`minierp/frontend/src`)
 

@@ -5,7 +5,7 @@ Proyecto integrador del Diplomado de Desarrollo Web Full Stack.
 | Capa | Tecnología |
 |---|---|
 | Backend | Java 17 · Spring Boot 3.3 · Spring Data JPA · Bean Validation · springdoc (Swagger) |
-| Base de datos | MySQL 8 |
+| Base de datos | H2 (por defecto) · MySQL 8 (perfil `mysql`) |
 | Frontend | Next.js 15 (App Router) · React 19 · TypeScript · Tailwind CSS 4 · Recharts |
 
 ```
@@ -22,17 +22,24 @@ minierp/
 ### Requisitos
 - JDK 17 o superior, Maven (o el de tu IDE: IntelliJ, VS Code o STS)
 - Node.js 20 o superior
-- MySQL 8 (instalado, XAMPP/Laragon, o `docker compose up -d`)
+- No necesitas instalar base de datos: por defecto se usa **H2**, que viene incluida.
 
 ### Backend
-1. Revisa usuario y contraseña de MySQL en `backend/src/main/resources/application.properties`.
-2. Ejecuta:
+1. Ejecuta:
    ```bash
    cd backend
    mvn spring-boot:run
    ```
-3. La base `minierp` y las tablas se crean solas. La primera vez se cargan **datos de ejemplo** (categorías, 10 productos, clientes, proveedores y 3 ventas).
-4. Documentación interactiva de la API: **http://localhost:8080/swagger-ui.html**
+2. Las tablas se crean solas en la carpeta `data/`. La primera vez se cargan **datos de ejemplo** (categorías, 10 productos, clientes, proveedores y 3 ventas). Para reiniciar la base desde cero, detén la app y borra la carpeta `data`.
+3. Documentación interactiva de la API: **http://localhost:8080/swagger-ui.html**
+4. Consola de la base de datos: **http://localhost:8080/h2-console** (JDBC URL `jdbc:h2:file:./data/minierp`, usuario `sa`, sin contraseña).
+
+### Usar MySQL (opcional)
+1. Ten MySQL corriendo (XAMPP, servicio de Windows o `docker compose up -d`).
+2. Ajusta usuario y contraseña en `application-mysql.properties`.
+3. Arranca con el perfil `mysql`:
+   - IntelliJ: *Run → Edit Configurations → Active profiles:* `mysql`
+   - Consola: `mvn spring-boot:run -Dspring-boot.run.profiles=mysql`
 
 ### Frontend
 ```bash
@@ -42,6 +49,44 @@ npm install
 npm run dev
 ```
 Abre **http://localhost:3000**
+
+---
+
+## Despliegue en producción
+
+```
+Navegador ──▶ Vercel (frontend) ──▶ Render (backend, Docker) ──▶ Supabase (PostgreSQL)
+```
+
+### 1. Supabase (base de datos)
+1. Crea un proyecto en supabase.com y **guarda la contraseña de la base de datos**.
+2. Clic en **Connect** → **Session pooler** (puerto 5432). No uses el Transaction pooler (6543): Hibernate usa prepared statements.
+3. Toma de ahí el host, el usuario (`postgres.<project-ref>`) y arma:
+   `jdbc:postgresql://<HOST>:5432/postgres?sslmode=require`
+
+Las tablas se crean solas en el esquema `minierp` al primer arranque del backend.
+
+### 2. Render (backend)
+1. **New → Web Service** → conecta el repositorio de GitHub.
+2. **Root Directory:** `backend` · **Language/Runtime:** Docker · **Instance:** Free.
+3. Variables de entorno:
+
+   | Key | Value |
+   |---|---|
+   | `DB_URL` | `jdbc:postgresql://<HOST>:5432/postgres?sslmode=require` |
+   | `DB_USERNAME` | `postgres.<project-ref>` |
+   | `DB_PASSWORD` | contraseña de la base de Supabase |
+   | `APP_CORS_ALLOWED_ORIGINS` | `https://<tu-app>.vercel.app,http://localhost:3000` |
+
+4. **Health Check Path** (en *Advanced*): `/api/categorias`
+5. Al terminar, prueba `https://<tu-servicio>.onrender.com/swagger-ui.html`
+
+> El plan gratuito se apaga tras 15 min sin uso; la primera petición después tarda en responder mientras arranca.
+
+### 3. Vercel (frontend)
+1. **Add New → Project** → mismo repositorio → **Root Directory:** `frontend`.
+2. Variable `NEXT_PUBLIC_API_URL` = `https://<tu-servicio>.onrender.com/api`
+3. Deploy. Si después cambias la variable, haz **Redeploy**.
 
 ---
 

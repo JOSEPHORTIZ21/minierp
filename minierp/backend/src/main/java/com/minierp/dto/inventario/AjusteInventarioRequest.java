@@ -1,8 +1,10 @@
 package com.minierp.dto.inventario;
 
+import com.minierp.dto.Limites;
 import com.minierp.entity.enums.TipoMovimiento;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
@@ -13,6 +15,7 @@ public record AjusteInventarioRequest(
 
         @NotNull(message = "La cantidad es obligatoria")
         @Positive(message = "Debe ser mayor a cero")
+        @Max(value = Limites.CANTIDAD_MAXIMA, message = "No puede superar " + Limites.CANTIDAD_MAXIMA)
         Integer cantidad,
 
         @NotBlank(message = "Explica el motivo del ajuste")

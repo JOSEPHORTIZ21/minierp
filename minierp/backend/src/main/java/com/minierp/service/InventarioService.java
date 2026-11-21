@@ -47,7 +47,15 @@ public class InventarioService {
             throw new ReglaNegocioException("La cantidad del movimiento debe ser mayor a cero");
         }
         int anterior = producto.getStock();
-        int resultante = tipo == TipoMovimiento.ENTRADA ? anterior + cantidad : anterior - cantidad;
+        int resultante;
+        try {
+            resultante = tipo == TipoMovimiento.ENTRADA
+                    ? Math.addExact(anterior, cantidad)
+                    : Math.subtractExact(anterior, cantidad);
+        } catch (ArithmeticException e) {
+            // Sin esto, una entrada enorme desbordaba el Integer y dejaba el stock negativo.
+            throw new ReglaNegocioException("El stock de '" + producto.getNombre() + "' superaría el máximo permitido");
+        }
         producto.setStock(resultante); // la entidad está gestionada: Hibernate guarda el cambio al confirmar
 
         MovimientoInventario movimiento = MovimientoInventario.builder()

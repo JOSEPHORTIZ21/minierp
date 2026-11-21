@@ -72,7 +72,7 @@ export default function KardexPage() {
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
       <Alerta tipo="exito" mensaje={exito} onCerrar={() => setExito(null)} />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 [&>*:last-child]:col-span-2 sm:[&>*:last-child]:col-span-1">
         <StatCard titulo="Stock actual" valor={String(producto.stock)} detalle={`Mínimo: ${producto.stockMinimo}`} alerta={producto.stockBajo} />
         <StatCard titulo="Valor en inventario" valor={formatoMoneda(producto.stock * producto.precioCompra)} detalle="A precio de compra" />
         <StatCard titulo="Movimientos" valor={String(movimientos.length)} />
@@ -80,7 +80,7 @@ export default function KardexPage() {
 
       <div className="grid gap-6 xl:grid-cols-3">
         <div className="tarjeta overflow-x-auto p-0 xl:col-span-2">
-          <table className="tabla">
+          <table className="tabla tabla-tarjetas">
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -95,22 +95,28 @@ export default function KardexPage() {
               {movimientos.length === 0 && <FilaVacia columnas={6} texto="Sin movimientos" />}
               {movimientos.map((m) => (
                 <tr key={m.id}>
-                  <td className="whitespace-nowrap">{formatoFecha(m.fecha)}</td>
-                  <td>
+                  <td data-label="Fecha" className="whitespace-nowrap">{formatoFecha(m.fecha)}</td>
+                  <td className="celda-titulo">
                     {conceptos[m.concepto]}
                     {m.observacion && <span className="block text-xs text-slate-500">{m.observacion}</span>}
                   </td>
-                  <td className="font-mono text-xs">{m.referencia}</td>
-                  <td className="text-right text-emerald-600">{m.tipo === "ENTRADA" ? `+${m.cantidad}` : ""}</td>
-                  <td className="text-right text-red-600">{m.tipo === "SALIDA" ? `-${m.cantidad}` : ""}</td>
-                  <td className="text-right font-semibold">{m.stockResultante}</td>
+                  <td data-label="Referencia" className="font-mono text-xs">{m.referencia}</td>
+                  {/* En móvil solo se muestra la columna que aplica (entrada o salida) */}
+                  <td data-label="Entrada" className={`text-right text-emerald-600 ${m.tipo === "ENTRADA" ? "" : "max-md:hidden"}`}>
+                    {m.tipo === "ENTRADA" ? `+${m.cantidad}` : ""}
+                  </td>
+                  <td data-label="Salida" className={`text-right text-red-600 ${m.tipo === "SALIDA" ? "" : "max-md:hidden"}`}>
+                    {m.tipo === "SALIDA" ? `-${m.cantidad}` : ""}
+                  </td>
+                  <td data-label="Saldo" className="text-right font-semibold">{m.stockResultante}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <form onSubmit={registrarAjuste} className="tarjeta h-fit space-y-4">
+        {/* En móvil y tablet el ajuste va antes del historial, que puede ser largo */}
+        <form onSubmit={registrarAjuste} className="tarjeta order-first h-fit space-y-4 xl:order-none">
           <h2 className="font-semibold text-slate-900">Ajuste de inventario</h2>
           <p className="text-xs text-slate-500">Úsalo para conteos físicos, productos dañados o vencidos.</p>
           <Campo label="Tipo" error={errores.tipo}>

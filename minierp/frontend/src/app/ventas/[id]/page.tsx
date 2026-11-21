@@ -35,7 +35,7 @@ export default function DetalleVentaPage() {
         <Link href="/ventas" className="btn btn-secundario">
           ← Ventas
         </Link>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {venta.estado === "COMPLETADA" && (
             <button className="btn btn-peligro" onClick={anular}>
               Anular
@@ -52,13 +52,13 @@ export default function DetalleVentaPage() {
 
       <Alerta mensaje={error} onCerrar={() => setError(null)} />
 
-      <div className="tarjeta p-8 print:border-0 print:shadow-none">
+      <div className="tarjeta p-4 sm:p-8 print:border-0 print:p-0 print:shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-6">
           <div>
             <p className="text-xl font-bold text-slate-900">Mi Negocio S.A.S.</p>
             <p className="text-sm text-slate-500">NIT 900.000.000-0 · Villavicencio, Meta</p>
           </div>
-          <div className="text-right">
+          <div className="sm:text-right print:text-right">
             <p className="text-xs uppercase tracking-wide text-slate-500">Factura de venta</p>
             <p className="font-mono text-lg font-bold">{venta.numero}</p>
             <p className="text-sm text-slate-500">{formatoFecha(venta.fecha)}</p>
@@ -74,7 +74,9 @@ export default function DetalleVentaPage() {
           <p className="text-slate-500">Doc. {venta.clienteDocumento}</p>
         </div>
 
-        <table className="tabla">
+        {/* En teléfonos cada renglón se ve como tarjeta; al imprimir siempre es tabla */}
+        <div className="-mx-4 border-t border-slate-200 sm:mx-0 md:border-0 print:mx-0 print:border-0">
+        <table className="tabla tabla-tarjetas">
           <thead>
             <tr>
               <th>Producto</th>
@@ -87,22 +89,25 @@ export default function DetalleVentaPage() {
           <tbody>
             {venta.detalles.map((d) => (
               <tr key={d.id}>
-                <td>
+                <td className="celda-titulo">
                   {d.productoNombre}
                   <span className="block font-mono text-xs text-slate-500">{d.productoCodigo}</span>
                 </td>
-                <td className="text-right">{d.cantidad}</td>
-                <td className="text-right">{formatoMoneda(d.precioUnitario)}</td>
-                <td className="text-right">
-                  {formatoMoneda(d.valorIva)} <span className="text-xs text-slate-500">({d.porcentajeIva}%)</span>
+                <td data-label="Cant." className="text-right">{d.cantidad}</td>
+                <td data-label="Precio" className="text-right">{formatoMoneda(d.precioUnitario)}</td>
+                <td data-label="IVA" className="text-right">
+                  <span>
+                    {formatoMoneda(d.valorIva)} <span className="text-xs text-slate-500">({d.porcentajeIva}%)</span>
+                  </span>
                 </td>
-                <td className="text-right font-medium">{formatoMoneda(d.total)}</td>
+                <td data-label="Total" className="text-right font-medium">{formatoMoneda(d.total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
+        </div>
 
-        <dl className="ml-auto mt-6 w-64 space-y-2 text-sm">
+        <dl className="ml-auto mt-6 w-full space-y-2 text-sm sm:w-64 print:w-64">
           <div className="flex justify-between">
             <dt className="text-slate-500">Subtotal</dt>
             <dd>{formatoMoneda(venta.subtotal)}</dd>

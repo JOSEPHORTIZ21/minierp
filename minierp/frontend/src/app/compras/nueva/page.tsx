@@ -83,7 +83,7 @@ export default function NuevaCompraPage() {
           <BuscadorProductos onSeleccionar={agregar} mostrarCosto />
 
           <div className="tarjeta overflow-x-auto p-0">
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Producto</th>
@@ -96,29 +96,31 @@ export default function NuevaCompraPage() {
               <tbody>
                 {items.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="py-10 text-center text-slate-500">
+                    <td colSpan={5} className="justify-center py-10 text-center text-slate-500">
                       Agrega los productos de la factura
                     </td>
                   </tr>
                 )}
                 {items.map((i) => (
                   <tr key={i.producto.id}>
-                    <td>
+                    <td className="celda-titulo">
                       <p className="font-medium">{i.producto.nombre}</p>
                       <p className="text-xs text-slate-500">Stock actual: {i.producto.stock}</p>
                     </td>
-                    <td>
+                    <td data-label="Cantidad">
                       <input
                         type="number"
+                        inputMode="numeric"
                         min={1}
                         className="input text-center"
                         value={i.cantidad}
                         onChange={(e) => actualizar(i.producto.id, { cantidad: Math.max(1, Number(e.target.value) || 1) })}
                       />
                     </td>
-                    <td>
+                    <td data-label="Costo unitario">
                       <input
                         type="number"
+                        inputMode="decimal"
                         min={0}
                         step="any"
                         className="input text-right"
@@ -126,14 +128,15 @@ export default function NuevaCompraPage() {
                         onChange={(e) => actualizar(i.producto.id, { costoUnitario: Number(e.target.value) })}
                       />
                     </td>
-                    <td className="text-right font-medium">{formatoMoneda(i.costoUnitario * i.cantidad)}</td>
+                    <td data-label="Subtotal" className="text-right font-medium">{formatoMoneda(i.costoUnitario * i.cantidad)}</td>
                     <td className="text-right">
                       <button
                         onClick={() => setItems((a) => a.filter((x) => x.producto.id !== i.producto.id))}
-                        className="text-lg text-slate-400 hover:text-red-600"
-                        aria-label="Quitar"
+                        className="inline-flex h-9 items-center justify-center gap-1 rounded-lg px-2 text-slate-400 hover:bg-red-50 hover:text-red-600"
+                        aria-label={`Quitar ${i.producto.nombre}`}
                       >
-                        ×
+                        <span className="text-lg leading-none">×</span>
+                        <span className="text-sm md:hidden">Quitar</span>
                       </button>
                     </td>
                   </tr>
@@ -143,7 +146,7 @@ export default function NuevaCompraPage() {
           </div>
         </div>
 
-        <div className="tarjeta h-fit space-y-4">
+        <div className="tarjeta h-fit space-y-4 xl:sticky xl:top-8">
           <h2 className="font-semibold text-slate-900">Datos de la factura</h2>
           <Campo label="Proveedor" error={errores.proveedorId}>
             <select className="input" value={proveedorId} onChange={(e) => setProveedorId(e.target.value)}>

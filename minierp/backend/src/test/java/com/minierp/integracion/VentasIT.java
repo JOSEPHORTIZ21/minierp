@@ -31,6 +31,7 @@ class VentasIT extends IntegracionBase {
         try {
             HttpRequest.Builder peticion = HttpRequest.newBuilder(URI.create("http://localhost:" + puerto + ruta))
                     .header("Content-Type", "application/json")
+                    .header("Authorization", "Bearer " + tokenAdmin())
                     .method(metodo, json == null ? HttpRequest.BodyPublishers.noBody()
                             : HttpRequest.BodyPublishers.ofString(json));
             return HTTP.send(peticion.build(), HttpResponse.BodyHandlers.discarding()).statusCode();

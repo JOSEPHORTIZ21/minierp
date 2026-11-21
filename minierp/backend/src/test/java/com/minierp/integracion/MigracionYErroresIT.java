@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class MigracionYErroresIT extends IntegracionBase {
 
     private static final List<String> TABLAS = List.of("categorias", "productos", "clientes", "proveedores",
-            "ventas", "detalles_venta", "compras", "detalles_compra", "movimientos_inventario");
+            "ventas", "detalles_venta", "compras", "detalles_compra", "movimientos_inventario", "usuarios");
 
     @Autowired
     private JdbcTemplate jdbc;

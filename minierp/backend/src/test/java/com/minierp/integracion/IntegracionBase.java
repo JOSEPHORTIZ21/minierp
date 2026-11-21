@@ -46,10 +46,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
                 "spring.jpa.properties.hibernate.default_schema=minierp",
                 "spring.jpa.show-sql=false",
                 "spring.h2.console.enabled=false",
-                "app.seed.enabled=false"
+                "app.seed.enabled=false",
+                // AdminInicial crea este administrador al arrancar (la tabla de usuarios empieza vacía)
+                "app.admin.email=" + IntegracionBase.ADMIN_EMAIL,
+                "app.admin.password=" + IntegracionBase.ADMIN_CLAVE
         })
 @AutoConfigureMockMvc
 public abstract class IntegracionBase {
+
+    static final String ADMIN_EMAIL = "admin-it@minierp.test";
+    static final String ADMIN_CLAVE = "AdminIT12345";
+
+    /** Token del administrador de prueba; se obtiene una vez (el contexto y la base se comparten). */
+    private static String tokenAdmin;
 
     /** Ruta relativa al módulo backend (directorio de trabajo de Maven). */
     private static final Path MIGRACIONES = Path.of("..", "..", "supabase", "migrations");
@@ -97,10 +106,21 @@ public abstract class IntegracionBase {
     // Llamadas HTTP
     // ------------------------------------------------------------------
 
-    /** Ejecuta la petición, verifica el código HTTP y devuelve el cuerpo (o null si viene vacío). */
+    /** Ejecuta la petición como el administrador de prueba. */
     protected JsonNode llamar(HttpMethod metodo, String url, Object cuerpo, int statusEsperado) {
+        return llamarComo(tokenAdmin(), metodo, url, cuerpo, statusEsperado);
+    }
+
+    /**
+     * Ejecuta la petición con el token indicado (null = sin cabecera Authorization),
+     * verifica el código HTTP y devuelve el cuerpo (o null si viene vacío).
+     */
+    protected JsonNode llamarComo(String token, HttpMethod metodo, String url, Object cuerpo, int statusEsperado) {
         try {
             MockHttpServletRequestBuilder peticion = MockMvcRequestBuilders.request(metodo, url);
+            if (token != null) {
+                peticion.header("Authorization", "Bearer " + token);
+            }
             if (cuerpo != null) {
                 String texto = cuerpo instanceof String s ? s : objectMapperSpring.writeValueAsString(cuerpo);
                 peticion.contentType(MediaType.APPLICATION_JSON).content(texto);
@@ -135,6 +155,29 @@ public abstract class IntegracionBase {
 
     protected JsonNode delete(String url, int status) {
         return llamar(HttpMethod.DELETE, url, null, status);
+    }
+
+    // ------------------------------------------------------------------
+    // Sesiones
+    // ------------------------------------------------------------------
+
+    protected String tokenAdmin() {
+        if (tokenAdmin == null) {
+            tokenAdmin = iniciarSesion(ADMIN_EMAIL, ADMIN_CLAVE);
+        }
+        return tokenAdmin;
+    }
+
+    protected String iniciarSesion(String email, String clave) {
+        return llamarComo(null, HttpMethod.POST, "/api/auth/login", Map.of("email", email, "password", clave), 200)
+                .get("token").asText();
+    }
+
+    /** Crea (como admin) un usuario nuevo con el rol indicado y devuelve su token. */
+    protected String nuevoUsuario(String rol) {
+        String email = unico("u").toLowerCase() + "@minierp.test";
+        post("/api/usuarios", Map.of("nombre", "Usuario " + rol, "email", email, "password", "Clave12345", "rol", rol), 201);
+        return iniciarSesion(email, "Clave12345");
     }
 
     // ------------------------------------------------------------------

@@ -1,6 +1,6 @@
 # Modelo de datos
 
-Fuente de verdad del esquema: la migración [`supabase/migrations/20261121000000_esquema_inicial.sql`](../../supabase/migrations/20261121000000_esquema_inicial.sql) (producción, PostgreSQL en Supabase, esquema `minierp`). En desarrollo, Hibernate genera las mismas tablas en H2 a partir de las entidades de `com.minierp.entity`.
+Fuente de verdad del esquema: las migraciones de [`supabase/migrations/`](../../supabase/migrations/), en orden: `20261121000000_esquema_inicial.sql` y `20261121010000_usuarios.sql` (producción, PostgreSQL en Supabase, esquema `minierp`). En desarrollo, Hibernate genera las mismas tablas en H2 a partir de las entidades de `com.minierp.entity`.
 
 ## Diagrama entidad-relación
 
@@ -90,6 +90,15 @@ erDiagram
         numeric(14_2) valor_iva
         numeric(14_2) total
     }
+    USUARIOS {
+        bigint id PK
+        varchar(120) email UK "minúsculas, para iniciar sesión"
+        varchar(120) nombre
+        varchar(100) clave_hash "BCrypt"
+        varchar(10) rol "ADMIN | CAJERO"
+        boolean activo
+        timestamp creado_en
+    }
     MOVIMIENTOS_INVENTARIO {
         bigint id PK
         bigint producto_id FK
@@ -117,6 +126,7 @@ erDiagram
 | `compras` | Factura recibida de un proveedor | único (`proveedor_id`, `numero_factura`) |
 | `detalles_compra` | Renglones de la compra | FK `compra_id`, `producto_id` |
 | `movimientos_inventario` | Kardex: cada cambio de stock con su saldo antes y después | FK `producto_id` · índice (`producto_id`, `fecha`) |
+| `usuarios` | Quién inicia sesión: correo, hash BCrypt de la contraseña, rol (`ADMIN`/`CAJERO`) y si está activo. Migración `20261121010000_usuarios.sql` | `email` único y en minúsculas · `check` de rol |
 
 Montos en `numeric(14,2)`, redondeo `HALF_UP` a 2 decimales (`util/Montos`). Fechas en hora local del servidor (`America/Bogota`).
 
@@ -144,3 +154,5 @@ Capas: **BD** = restricción en PostgreSQL (migración) · **Servicio** = `com.m
 | R16 | Cantidades positivas y acotadas; IVA entre 0 y 100; precios > 0 | DTO (`@Positive`, `@Max`, `@DecimalMin/Max`) | BD: `check` equivalentes |
 | R17 | Venta sin cliente = consumidor final (documento 222222222222 en la factura) | Servicio/DTO (`VentaResponse`) | Front (factura imprimible) |
 | R18 | Los datos solo son accesibles a través de la API de Spring Boot | BD (RLS activo sin políticas para `anon`/`authenticated`, esquema no expuesto) | Infra: credenciales solo en variables de entorno de Render |
+| R19 | Toda operación exige sesión y el rol adecuado; el rol y el estado se leen de la base en cada petición | Seguridad (`SecurityConfig`, `ConvertidorTokenUsuario`) | Front: oculta lo que el rol no puede usar (`lib/permisos.ts`) |
+| R20 | Siempre queda al menos un ADMIN activo, y nadie se quita a sí mismo el rol ni se desactiva | Servicio (`UsuarioService.actualizar`, administradores bloqueados con `FOR UPDATE`) | Front: deshabilita esos campos para el propio usuario |

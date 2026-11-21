@@ -4,6 +4,8 @@ import { useEffect, useState, type FormEvent } from "react";
 import { api, erroresCampos, query } from "@/lib/api";
 import { mensajeError } from "@/lib/format";
 import { mostrarFormulario } from "@/lib/dom";
+import { puede } from "@/lib/permisos";
+import { useSesion } from "@/lib/sesion";
 import type { Page } from "@/lib/types";
 import { Alerta, Campo, Cargando, FilaVacia, PageHeader, Paginacion } from "@/components/ui";
 
@@ -28,6 +30,8 @@ type Registro = { id: number } & Record<string, string | number | null>;
 
 /** CRUD genérico para clientes y proveedores (comparten la misma estructura). */
 export default function CatalogoTerceros({ endpoint, titulo, descripcion, singular, campos, ordenarPor, campoNombre }: Props) {
+  // El CAJERO puede registrar clientes nuevos, pero no editarlos ni eliminarlos
+  const puedeEditar = puede.editarClientes(useSesion()?.usuario.rol ?? "CAJERO");
   const vacio = Object.fromEntries(campos.map((c) => [c.clave, ""])) as Record<string, string>;
 
   const [data, setData] = useState<Page<Registro> | null>(null);
@@ -124,11 +128,11 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
                       {columnas.map((c) => (
                         <th key={c.clave}>{c.etiqueta}</th>
                       ))}
-                      <th className="text-right">Acciones</th>
+                      {puedeEditar && <th className="text-right">Acciones</th>}
                     </tr>
                   </thead>
                   <tbody>
-                    {data.content.length === 0 && <FilaVacia columnas={columnas.length + 1} />}
+                    {data.content.length === 0 && <FilaVacia columnas={columnas.length + (puedeEditar ? 1 : 0)} />}
                     {data.content.map((r) => (
                       <tr key={r.id}>
                         {columnas.map((c, i) =>
@@ -143,16 +147,18 @@ export default function CatalogoTerceros({ endpoint, titulo, descripcion, singul
                             </td>
                           ),
                         )}
-                        <td>
-                          <div className="flex justify-end gap-4 py-1 md:gap-3 md:py-0">
-                            <button className="btn-enlace" onClick={() => editar(r)}>
-                              Editar
-                            </button>
-                            <button className="text-sm font-medium text-red-600 hover:underline" onClick={() => eliminar(r)}>
-                              Eliminar
-                            </button>
-                          </div>
-                        </td>
+                        {puedeEditar && (
+                          <td>
+                            <div className="flex justify-end gap-4 py-1 md:gap-3 md:py-0">
+                              <button className="btn-enlace" onClick={() => editar(r)}>
+                                Editar
+                              </button>
+                              <button className="text-sm font-medium text-red-600 hover:underline" onClick={() => eliminar(r)}>
+                                Eliminar
+                              </button>
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

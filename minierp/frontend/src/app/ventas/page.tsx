@@ -3,11 +3,14 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { api, query } from "@/lib/api";
+import { puede } from "@/lib/permisos";
+import { useSesion } from "@/lib/sesion";
 import { formatoFecha, formatoMoneda, mensajeError } from "@/lib/format";
 import type { Page, VentaResumen } from "@/lib/types";
 import { Alerta, BadgeEstado, Cargando, FilaVacia, PageHeader, Paginacion } from "@/components/ui";
 
 export default function VentasPage() {
+  const puedeAnular = puede.anularVentas(useSesion()?.usuario.rol ?? "CAJERO");
   const [data, setData] = useState<Page<VentaResumen> | null>(null);
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
@@ -121,7 +124,7 @@ export default function VentasPage() {
                         <Link href={`/ventas/${v.id}`} className="btn-enlace">
                           Ver
                         </Link>
-                        {v.estado === "COMPLETADA" && (
+                        {puedeAnular && v.estado === "COMPLETADA" && (
                           <button className="text-sm font-medium text-red-600 hover:underline" onClick={() => anular(v)}>
                             Anular
                           </button>

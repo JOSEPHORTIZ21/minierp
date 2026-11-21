@@ -37,6 +37,19 @@ public class GlobalExceptionHandler {
         return construir(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), req, null);
     }
 
+    @ExceptionHandler(CredencialesInvalidasException.class)
+    public ResponseEntity<ErrorResponse> credenciales(CredencialesInvalidasException ex, HttpServletRequest req) {
+        return construir(HttpStatus.UNAUTHORIZED, ex.getMessage(), req, null);
+    }
+
+    @ExceptionHandler(DemasiadosIntentosException.class)
+    public ResponseEntity<ErrorResponse> demasiadosIntentos(DemasiadosIntentosException ex, HttpServletRequest req) {
+        ResponseEntity<ErrorResponse> respuesta = construir(HttpStatus.TOO_MANY_REQUESTS, ex.getMessage(), req, null);
+        return ResponseEntity.status(respuesta.getStatusCode())
+                .header("Retry-After", String.valueOf(ex.getSegundosEspera()))
+                .body(respuesta.getBody());
+    }
+
     @ExceptionHandler(ConflictoException.class)
     public ResponseEntity<ErrorResponse> conflicto(ConflictoException ex, HttpServletRequest req) {
         return construir(HttpStatus.CONFLICT, ex.getMessage(), req, null);

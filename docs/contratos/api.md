@@ -2,7 +2,8 @@
 
 - **Base:** `http://localhost:8080/api` en desarrollo · `https://<servicio>.onrender.com/api` en producción.
 - **Formato:** JSON en UTF-8. Fechas `LocalDateTime` como `2026-11-21T10:15:30`; fechas de filtro como `2026-11-21`. Montos como número decimal con 2 decimales.
-- **Autenticación:** ninguna (ver hallazgo A1 en [`docs/auditoria.md`](../auditoria.md)). CORS solo admite los orígenes de `APP_CORS_ALLOWED_ORIGINS`.
+- **Autenticación:** token JWT en la cabecera `Authorization: Bearer <token>`, obtenido en `POST /auth/login` (vigencia de 8 horas). Todas las rutas lo exigen salvo `POST /auth/login` y `GET /salud`. El rol se verifica en cada petición contra la base. Ver [autenticación y usuarios](#autenticación-y-usuarios) y la [spec](../specs/autenticacion.md).
+- **CORS:** solo los orígenes de `APP_CORS_ALLOWED_ORIGINS`, con las cabeceras `Authorization` y `Content-Type`.
 - **Documentación interactiva:** `/swagger-ui.html` (generada a partir del código; este documento es el contrato acordado).
 
 ## Convenciones
@@ -33,12 +34,33 @@ Todos los errores usan el mismo cuerpo:
 |---|---|---|
 | 400 | Validación de campos (`errores` presente), JSON mal formado, parámetro con tipo inválido, campo de `sort` inexistente | Todas las operaciones con cuerpo o parámetros |
 | 404 | El recurso del `{id}` (o uno referenciado en el cuerpo) no existe; ruta inexistente | Operaciones con `{id}` o con ids en el cuerpo |
+| 401 | Sin token, token inválido, vencido, firmado por otro sistema o de un usuario desactivado; en el login, credenciales incorrectas (mismo mensaje si el correo no existe) | Todas salvo `GET /salud` |
+| 403 | El rol del usuario no permite la operación | Ver la columna **Rol** de cada sección |
 | 405 | Método HTTP no soportado en la ruta | Todas |
 | 409 | Duplicado de un campo único, o borrado de un registro en uso | Crear/editar/eliminar catálogos, registrar compra |
 | 422 | Regla de negocio incumplida (stock, precios, estado) | Productos, ventas, compras, ajustes |
+| 429 | 5 intentos de login fallidos con el mismo correo; cabecera `Retry-After` con los segundos de espera | `POST /auth/login` |
 | 500 | Error no controlado. El mensaje es genérico (`Error interno del servidor`); el detalle solo queda en el log | Todas |
 
 Los errores 400 y 405 aplican a todas las operaciones y no se repiten en las tablas siguientes.
+
+## Autenticación y usuarios
+
+| Operación | Rol | Respuesta | Errores |
+|---|---|---|---|
+| `GET /salud` | Público | 200 `{estado: "ok"}` (health check de Render) | — |
+| `POST /auth/login` `{email, password}` | Público | 200 `{token, expiraEn, usuario}` | 401 credenciales · 429 demasiados intentos |
+| `GET /auth/yo` | Cualquiera | 200 `Usuario` con el rol vigente | — |
+| `POST /auth/cambiar-clave` `{actual, nueva}` | Cualquiera | 204 | 422 actual incorrecta o igual a la nueva |
+| `GET /usuarios?page=&size=&sort=` | ADMIN | 200 `Page<Usuario>` | — |
+| `GET /usuarios/{id}` | ADMIN | 200 `Usuario` | 404 |
+| `POST /usuarios` `{nombre, email, password, rol}` | ADMIN | 201 `Usuario` | 409 correo repetido |
+| `PUT /usuarios/{id}` `{nombre, rol, activo}` | ADMIN | 200 `Usuario` | 404 · 422 quitarse el rol o desactivarse a sí mismo · 422 dejar el sistema sin administrador activo |
+| `PUT /usuarios/{id}/clave` `{password}` | ADMIN | 204 | 404 |
+
+`Usuario = {id, email, nombre, rol: ADMIN|CAJERO, activo, creadoEn}`: nunca incluye la contraseña ni su hash. El correo se guarda en minúsculas y no se edita. Contraseñas: de 8 a 72 caracteres, con al menos una letra y un número (si no, 400 con el error en el campo).
+
+**Rol** en las secciones siguientes: **ADMIN** y **CAJERO** pueden `GET` productos (incluido el kardex), categorías, clientes y ventas, y `POST` ventas y clientes. Todo lo demás es solo **ADMIN** (403 para el CAJERO): dashboard, compras, proveedores, escritura de productos y categorías, ajustes, edición y borrado de clientes, anulación de ventas y usuarios.
 
 ## Dashboard
 

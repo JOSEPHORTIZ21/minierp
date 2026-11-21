@@ -36,7 +36,7 @@ No hay linter ni pruebas en el frontend.
 - En H2 y MySQL el esquema lo genera Hibernate (`ddl-auto=update`). En `prod` lo define la migración `supabase/migrations/` y Hibernate solo valida (`ddl-auto=validate`).
 - `DataSeeder` carga datos de ejemplo solo si no hay categorías (`app.seed.enabled`).
 - **`mysql`**: `application-mysql.properties`.
-- **`prod`**: PostgreSQL en Supabase, desplegado en Render con el `Dockerfile` (que activa `prod`). Usa las variables de entorno `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` y `APP_CORS_ALLOWED_ORIGINS`. Las tablas van al esquema `minierp` (no `public`), con RLS activo y sin políticas; los datos semilla los carga la migración (`app.seed.enabled=false`). Requiere el Session pooler (puerto 5432), no el Transaction pooler. El pool de Hikari está limitado a 5 conexiones. El frontend se despliega en Vercel.
+- **`prod`**: PostgreSQL en Supabase, desplegado en Render con el `Dockerfile` (que activa `prod`). Usa las variables de entorno `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `APP_CORS_ALLOWED_ORIGINS`, `JWT_SECRET` (obligatoria, de 32 caracteres o más) y `ADMIN_EMAIL`/`ADMIN_PASSWORD` (solo crean el primer administrador si no hay usuarios). Swagger está desactivado y el health check es `GET /api/salud`. Las tablas van al esquema `minierp` (no `public`), con RLS activo y sin políticas; los datos semilla los carga la migración (`app.seed.enabled=false`). Requiere el Session pooler (puerto 5432), no el Transaction pooler. El pool de Hikari está limitado a 5 conexiones. El frontend se despliega en Vercel.
 - Los orígenes CORS salen de `app.cors.allowed-origins` (`CorsConfig`, solo para `/api/**`).
 
 ## Backend
@@ -58,19 +58,29 @@ Capas: `controller` → `service` → `repository` → `entity`, con `dto` separ
 - Productos con borrado lógico (`activo`). No se pueden borrar categorías, clientes ni proveedores que estén en uso.
 - `spring.jpa.open-in-view=false`: carga dentro del servicio todas las relaciones que necesite el DTO (transacciones `readOnly`, `join fetch`), porque fuera de ellos se produce `LazyInitializationException`.
 
+### Autenticación y autorización (`com.minierp.seguridad`)
+- **Token JWT:** HS256, firmado con `app.jwt.secret` (`JwtConfig`, `TokenService`). El `sub` es el id del usuario. El frontend lo envía como `Authorization: Bearer`.
+- **Rol y estado vigentes:** `ConvertidorTokenUsuario` carga el usuario en **cada** petición. Si está desactivado responde 401, y el rol que aplica es el de la base, no el que trae el token. No autorices con los claims `rol`/`nombre` del token: son solo para mostrar.
+- **Permisos por ruta:** todos están en `SecurityConfig`. Lo que no está listado exige ADMIN, así que una ruta nueva queda protegida por defecto. Si un endpoint nuevo debe estar disponible para el CAJERO, agrégalo ahí, en `frontend/src/lib/permisos.ts` y en `docs/specs/autenticacion.md` (criterio 7), con su prueba en `AutenticacionIT`.
+- **Respuestas de rechazo:** los 401 y 403 los escribe `RespuestasSeguridad`, con el formato `ErrorResponse`, porque ocurren antes de los controladores.
+- **Usuario de la petición:** `UsuarioActual.id()` devuelve el usuario autenticado.
+- **Reglas de usuarios:** se desactivan, no se borran; siempre queda un ADMIN activo (`UsuarioService.actualizar` bloquea a los administradores con `FOR UPDATE`); el login responde igual si el correo no existe y se bloquea tras 5 fallos (`IntentosLogin`, en memoria).
+- **Usuarios de desarrollo:** `AdminInicial` crea el admin con `app.admin.*` si la tabla está vacía, y `DataSeeder` crea un cajero de prueba. Sus contraseñas están en esos archivos.
+
 ### Seguridad y cambios de esquema
-- La API no tiene autenticación: todo endpoint es público. La validación de los DTO (límites de texto, cantidades hasta 100 000, montos `@Digits(12,2)`, listas de hasta 100 ítems) y el tamaño máximo de página (100) son la primera línea de defensa; no los relajes.
+- La validación de los DTO (límites de texto, cantidades hasta 100 000, montos `@Digits(12,2)`, listas de hasta 100 ítems, política de contraseñas `@Clave`) y el tamaño máximo de página (100) son la primera línea de defensa; no los relajes.
 - Cualquier entidad o columna nueva necesita una migración nueva en `supabase/migrations/` con RLS activo. Si falta, `prod` no arranca porque `validate` falla.
 - Las fechas son `LocalDateTime` en hora de Colombia: la JVM corre con `-Duser.timezone=America/Bogota` (Dockerfile y Failsafe), y la semilla de la migración usa `now() at time zone 'America/Bogota'`. No uses `localtimestamp`/`now()` sin zona en SQL.
 
 ### Pruebas
 - **Unitarias** (`*Test`, `mvn test`): Mockito (`@ExtendWith(MockitoExtension.class)`), sin Spring ni base de datos.
-- **Integración** (`src/test/java/com/minierp/integracion/*IT`, `mvn verify`, Failsafe): extienden `IntegracionBase`, que levanta la app completa contra `postgres:16-alpine` en Testcontainers, creado con **todos los `.sql` de `supabase/migrations/`** y `ddl-auto=validate`. Un contenedor compartido por todas las clases; cada prueba crea sus datos con `unico(...)` para no depender del orden ni de la semilla. Hay una clase por spec de `docs/specs/` y los métodos se nombran `cN_…` según el criterio N. La concurrencia (`VentasIT`) usa `java.net.http.HttpClient` contra el puerto real, no MockMvc.
+- **Integración** (`src/test/java/com/minierp/integracion/*IT`, `mvn verify`, Failsafe): extienden `IntegracionBase`, que inicia sesión como un admin de prueba (`llamar`, `get`, `post`… envían su token; `llamarComo(token, …)` usa otro, o ninguno con `null`; `nuevoUsuario(rol)` crea un usuario y devuelve su token) y levanta la app completa contra `postgres:16-alpine` en Testcontainers, creado con **todos los `.sql` de `supabase/migrations/`** y `ddl-auto=validate`. Un contenedor compartido por todas las clases; cada prueba crea sus datos con `unico(...)` para no depender del orden ni de la semilla. Hay una clase por spec de `docs/specs/` y los métodos se nombran `cN_…` según el criterio N. La concurrencia (`VentasIT`) usa `java.net.http.HttpClient` contra el puerto real, no MockMvc.
 - Si agregas un criterio a una spec, agrega su prueba `cN_` en la clase IT correspondiente.
 
 ## Arquitectura del frontend (`minierp/frontend/src`)
 
 - Next.js 15 App Router + React 19 + Tailwind 4 + Recharts. Las páginas son componentes de cliente (`"use client"`) que piden los datos a la API desde el navegador; no hay rutas de API ni obtención de datos en el servidor.
-- Toda llamada HTTP pasa por `lib/api.ts` (`api.get/post/put/patch/delete`, `query()` para armar el query string). Lanza `ApiError` con `mensaje` y `errores`; usa `erroresCampos(e)` para mostrar los errores por campo y `mensajeError(e)` (`lib/format.ts`) para el mensaje general.
+- **Sesión:** `lib/sesion.ts` guarda el token en `localStorage` y expone `useSesion()`. `components/MarcoApp.tsx` (en el layout) redirige al login si no hay sesión, consulta `/auth/yo` al cargar y muestra "sin acceso" si el rol no puede ver la ruta. `lib/permisos.ts` refleja `SecurityConfig`: rutas del CAJERO y `puede.*` para ocultar botones. El backend es quien hace cumplir los permisos.
+- Toda llamada HTTP pasa por `lib/api.ts`, que agrega el token y cierra la sesión ante un 401 (`api.get/post/put/patch/delete`, `query()` para armar el query string). Lanza `ApiError` con `mensaje` y `errores`; usa `erroresCampos(e)` para mostrar los errores por campo y `mensajeError(e)` (`lib/format.ts`) para el mensaje general.
 - `lib/types.ts` replica a mano los DTO del backend: si cambias un `*Response` o `*Request` en Java, actualízalo aquí también.
 - `components/ui.tsx` reúne los componentes visuales compartidos (`PageHeader`, `Alerta`, `Campo`, `Paginacion`, `StatCard`, …). `CatalogoTerceros` es la pantalla CRUD genérica que usan clientes y proveedores. `lib/format.ts` formatea moneda COP y fechas.

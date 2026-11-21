@@ -7,7 +7,10 @@ import com.minierp.dto.producto.ProductoResponse;
 import com.minierp.dto.proveedor.ProveedorRequest;
 import com.minierp.dto.venta.ItemVentaRequest;
 import com.minierp.dto.venta.VentaRequest;
+import com.minierp.dto.usuario.UsuarioRequest;
+import com.minierp.entity.enums.Rol;
 import com.minierp.repository.CategoriaRepository;
+import com.minierp.repository.UsuarioRepository;
 import com.minierp.service.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,7 +32,11 @@ import java.util.List;
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true", matchIfMissing = true)
 public class DataSeeder implements CommandLineRunner {
 
+    private static final String CAJERO_DEMO = "cajero@minierp.local";
+
     private final CategoriaRepository categoriaRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final UsuarioService usuarioService;
     private final CategoriaService categoriaService;
     private final ProductoService productoService;
     private final ClienteService clienteService;
@@ -38,6 +45,13 @@ public class DataSeeder implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
+        // Usuario de prueba con rol CAJERO (solo desarrollo: en prod app.seed.enabled=false).
+        // El ADMIN de desarrollo lo crea AdminInicial con app.admin.* de application.properties.
+        if (!usuarioRepository.existsByEmail(CAJERO_DEMO)) {
+            usuarioService.crear(new UsuarioRequest("Cajero de prueba", CAJERO_DEMO, "Cajero12345", Rol.CAJERO));
+            log.info("Usuario de prueba creado: {}", CAJERO_DEMO);
+        }
+
         if (categoriaRepository.count() > 0) {
             return;
         }

@@ -12,6 +12,8 @@ Fecha: 2026-11-21.
 | 3 | Decisión de arquitectura (pregunta de la IA): ¿el front habla con Supabase o solo con el backend? → **Solo backend** | RLS en todas las tablas **sin políticas**; el front sigue usando la API de Spring |
 | 4 | Decisión de flujo (pregunta de la IA): ¿quién hace los commits? → **La IA, en una rama, sin push** | Rama `entregables-unidad`; el despliegue queda a cargo del equipo |
 | 5 | "¿Pruebas de integración o e2e, cuál es mejor y por qué?" → integración primero; luego "Sí, integración" | 47 pruebas `*IT` con Testcontainers y la migración real, una por criterio de las specs. Encontraron un hallazgo nuevo (A14, zona horaria) |
+| 6 | "Quiero que lo hagas responsive para cualquier dispositivo" | Menú móvil, tablas como tarjetas en teléfono y columnas secundarias ocultas en tablet; verificado a 320, 768, 1024 y 1280 px |
+| 7 | "Quiero agregarle el sistema de autorización, un login al sistema" → la IA preguntó roles (**Admin y Cajero**) y gestión de usuarios (**pantalla de usuarios**) | Spring Security + JWT, rol leído de la base en cada petición, pantallas de login, usuarios y mi cuenta; cierra A1 y A11 de la auditoría |
 
 Instrucciones internas que guiaron el trabajo y que conviene reutilizar como prompts:
 - "Antes de documentar, lee las entidades, los servicios y los DTO completos; no documentes de memoria."
@@ -42,6 +44,9 @@ Se decidió **no** cerrar en esta unidad la falta de autenticación (A1) ni el r
 | Documentó campos del dashboard con nombres inventados (`cantidad`, `total`) | Al contrastar con `TopProductoResponse` | Corregido a `cantidadVendida` y `totalVendido` en `docs/contratos/api.md` |
 | El borrado de `data/minierp.mv.db` quedó en el commit de otra corrección (A2), porque el archivo ya estaba en el índice | Al revisar `git log --diff-filter=D` | Rehizo los commits de la auditoría (rama local, sin push) para que cada uno tenga solo sus archivos |
 | Agregó `.idea/` al `.gitignore` aunque esa carpeta ya está versionada (no tendría efecto) | Al revisar `git ls-files .idea` | Quitó la línea; versionar o no `.idea` queda a decisión del equipo |
+| Inyectó `CorsConfigurationSource` por tipo en `SecurityConfig`, pero Spring MVC registra otro bean del mismo tipo: el contexto no arrancaba | Las 60 pruebas de integración fallaron al cargar el contexto | `cors(Customizer.withDefaults())`, que toma el bean por su nombre |
+| El botón "Cerrar sesión" y `MarcoApp` redirigían a la vez: a veces se perdía `?siguiente=` | Al probar el logout en el navegador | Solo `MarcoApp` redirige; el botón solo borra la sesión |
+| Envolvió un comentario JSX y un `<form>` en una sola condición sin fragmento | `tsc --noEmit` | Comentario fuera de la condición |
 | La migración revocaba permisos a `anon`/`authenticated`, roles que no existen en un PostgreSQL local | Al pensar en cómo probarla fuera de Supabase | Bloque `do $$ … if exists (pg_roles)`; se probó en los dos escenarios (con y sin los roles) |
 
 ## Lecciones

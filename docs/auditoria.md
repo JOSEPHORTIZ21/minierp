@@ -3,33 +3,48 @@
 - **Fecha:** 2026-11-21
 - **Alcance:** `minierp/backend` (Spring Boot), configuración de perfiles, migración de Supabase y archivos versionados. El frontend se revisó en lo que afecta a la API (tamaños de página, secretos en `.env`, `dangerouslySetInnerHTML`).
 - **Método:** revisión del código guiada por la skill `backend-seguro`, sondas HTTP contra el backend con el perfil `prod` sobre PostgreSQL 16 en Docker (con la migración aplicada) antes y después de corregir, y pruebas unitarias.
-- **Resultado:** 14 hallazgos: 10 corregidos y 4 justificados. `mvn verify`: 13 pruebas unitarias y 47 de integración (PostgreSQL real con Testcontainers) en verde.
+- **Resultado:** 14 hallazgos: 12 corregidos, 1 corregido en parte (A7) y 1 justificado (A12). `mvn verify`: 20 pruebas unitarias y 60 de integración (PostgreSQL real con Testcontainers) en verde.
 
 ## Resumen
 
 | ID | Hallazgo | Severidad | Estado |
 |---|---|---|---|
-| A1 | La API no tiene autenticación ni autorización | Alta | Justificado |
+| A1 | La API no tiene autenticación ni autorización | Alta | Corregido |
 | A2 | Dos anulaciones simultáneas devuelven el stock dos veces | Alta | Corregido |
 | A3 | Esquema de producción sin migración ni RLS (`ddl-auto=update`) | Alta | Corregido |
 | A4 | Cantidades sin tope: desbordan el `Integer` del stock | Media | Corregido |
 | A5 | Montos sin control de dígitos: redondeo silencioso y desborde de `numeric(14,2)` | Media | Corregido |
 | A6 | Listas y páginas sin tope razonable (ventas de 500 ítems, páginas de 2000) | Media | Corregido |
-| A7 | Sin límite de peticiones (rate limiting) | Media | Justificado |
+| A7 | Sin límite de peticiones (rate limiting) | Media | Corregido en parte |
 | A8 | Errores de Spring MVC y `sort` inválido responden 500 | Baja | Corregido |
 | A9 | Base H2 local versionada en git | Baja | Corregido |
 | A10 | El proyecto no compila con JDK 23 o superior | Baja | Corregido |
-| A11 | Swagger UI público en producción | Baja | Justificado |
+| A11 | Swagger UI público en producción | Baja | Corregido |
 | A12 | Credenciales `root/root` en `application-mysql.properties` y `docker-compose.yml` | Baja | Justificado |
 | A13 | Faltaban pruebas de la anulación y de los límites de entrada | Baja | Corregido |
 | A14 | Zona horaria inconsistente: semilla en UTC, JVM de Render en UTC y negocio en Colombia | Media | Corregido |
 
 ## Detalle
 
-### A1 · Sin autenticación — Justificado
-Cualquiera que conozca la URL de Render puede listar clientes (con teléfono y correo), registrar ventas o anular facturas. CORS no protege: solo lo aplica el navegador, y `curl` lo ignora.
-**Justificación:** la autenticación no forma parte del alcance de esta unidad, y agregarla exige pantallas de login, manejo de sesión en el front y roles. Mientras tanto, el daño queda acotado por: RLS y un esquema no expuesto (la base solo es accesible a través del backend), validación estricta de cada entrada (A4–A6), reglas de negocio en el servidor (el cliente no puede fijar precios, totales ni stock) y un kardex que deja rastro de cada cambio de inventario.
-**Plan:** Spring Security con JWT y roles `ADMIN`/`CAJERO` (ya figura en el README como siguiente paso). Hasta entonces, no cargar datos personales reales en producción.
+### A1 · Sin autenticación — Corregido
+Cualquiera que conociera la URL de Render podía listar clientes (con teléfono y correo), registrar ventas o anular facturas. CORS no protege: solo lo aplica el navegador, y `curl` lo ignora.
+**Corrección:** Spring Security como servidor de recursos JWT (HS256, secreto en `JWT_SECRET`, 8 horas de vigencia) y autorización por rol en `SecurityConfig`, donde toda ruta no listada exige ADMIN.
+- **ADMIN:** todo.
+- **CAJERO:** vender y consultar ventas, productos, categorías y clientes, y registrar clientes.
+- **Rol y estado vigentes:** se leen de la base en cada petición (`ConvertidorTokenUsuario`), así que desactivar a un usuario o cambiarle el rol aplica al instante.
+- **Contraseñas:** BCrypt, con una política mínima.
+- **Sin enumeración de correos:** misma respuesta si el correo no existe.
+- **Sin quedarse sin administradores:** siempre queda al menos uno activo.
+- **Primer administrador:** sale de variables de entorno, nunca del código.
+
+**Verificación:** `AutenticacionIT` cubre los 13 criterios de [`docs/specs/autenticacion.md`](specs/autenticacion.md):
+- 401 sin token, con un token alterado, vencido, de otro emisor o firmado con otra clave.
+- 403 en las 12 operaciones prohibidas al cajero.
+- Token invalidado al desactivar al usuario.
+- Cambio de rol aplicado sin volver a iniciar sesión.
+
+Además, se recorrió el flujo en el navegador con los dos roles.
+**Límite conocido:** el token vive en `localStorage`, así que un XSS podría leerlo. React escapa todo el contenido y el front no usa `dangerouslySetInnerHTML`. La alternativa (cookie `HttpOnly`) exige servir el front y la API desde el mismo sitio, porque Vercel y Render son dominios distintos.
 
 ### A2 · Doble anulación concurrente — Corregido
 `VentaService.anular` leía la venta sin bloqueo. Dos peticiones simultáneas pasaban la validación `estado != ANULADA` y ambas devolvían las unidades.
@@ -53,9 +68,10 @@ En `prod`, Hibernate creaba y alteraba las tablas (`ddl-auto=update`): sin restr
 Una venta con 500 ítems se procesaba completa (500 `SELECT … FOR UPDATE` en una transacción). `?size=5000` devolvía páginas de hasta 2000 elementos (el máximo por defecto de Spring).
 **Corrección:** `@Size(max = 100)` en `items` de ventas y compras, y `spring.data.web.pageable.max-page-size=100`. El front pide como máximo `size=100`, así que no se afecta. **Después:** 500 ítems → 400; `size=5000` → página de 100.
 
-### A7 · Sin rate limiting — Justificado
-Sin límite de peticiones, un cliente puede saturar el plan gratuito de Render (512 MB) o el pool de 5 conexiones de Supabase.
-**Justificación:** depende de A1 (sin identidad no hay límite por usuario), y el plan gratuito de Render no ofrece un WAF. Se mitiga con A6 (cada petición está acotada) y con el pool limitado, que protege a Supabase. Se implementará junto con la autenticación (por ejemplo Bucket4j por usuario o IP).
+### A7 · Sin rate limiting — Corregido en parte
+Sin límite de peticiones, un cliente puede saturar el plan gratuito de Render (512 MB) o el pool de 5 conexiones de Supabase, o probar contraseñas por fuerza bruta.
+**Corrección:** el login se bloquea tras 5 fallos con el mismo correo durante 15 minutos (429 con `Retry-After`, `IntentosLogin`). Con A1, el resto de la API ya no es anónima.
+**Pendiente justificado:** el resto de la API no tiene un límite de peticiones por usuario o IP. El plan gratuito de Render no ofrece WAF, y el riesgo queda acotado por la autenticación, A6 (cada petición está acotada) y el pool limitado. El contador del login vive en memoria: se reinicia al redesplegar y cuenta por correo, no por IP.
 
 ### A8 · Respuestas 500 indebidas — Corregido
 `?sort=noExiste`, una ruta inexistente y `DELETE /api/ventas` respondían 500 y quedaban registrados como errores internos, porque el manejador general capturaba las excepciones de Spring MVC.
@@ -69,9 +85,9 @@ Sin límite de peticiones, un cliente puede saturar el plan gratuito de Render (
 Con el JDK 25 instalado, `mvn test` fallaba con cientos de errores `cannot find symbol` (getters de Lombok). Desde JDK 23, `javac` no ejecuta procesadores de anotaciones que solo estén en el classpath; además, Lombok 1.18.34 y Byte Buddy 1.14 no soportan JDK 25.
 **Corrección:** `lombok.version=1.18.42`, `byte-buddy.version=1.17.8` y Lombok declarado en `annotationProcessorPaths` del `maven-compiler-plugin`. Compila y pasa las pruebas con JDK 21 y 25.
 
-### A11 · Swagger público — Justificado
-`/swagger-ui.html` describe todos los endpoints en producción.
-**Justificación:** solo documenta una API que ya es pública (A1) y se usa en las pruebas de fuego del despliegue. Al implementar A1 se desactivará en `prod` (`springdoc.swagger-ui.enabled=false`).
+### A11 · Swagger público — Corregido
+`/swagger-ui.html` describía todos los endpoints en producción.
+**Corrección:** `springdoc.api-docs.enabled=false` y `springdoc.swagger-ui.enabled=false` en `application-prod.properties`; sigue disponible en desarrollo, con el botón *Authorize*. El health check de Render pasa a `/api/salud`, la única ruta pública además del login.
 
 ### A12 · Credenciales de ejemplo — Justificado
 `root/root` en el perfil `mysql` y en `docker-compose.yml`.

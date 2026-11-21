@@ -31,8 +31,9 @@ minierp/
    mvn spring-boot:run
    ```
 2. Las tablas se crean solas en la carpeta `data/`. La primera vez se cargan **datos de ejemplo** (categorías, 10 productos, clientes, proveedores y 3 ventas). Para reiniciar la base desde cero, detén la app y borra la carpeta `data`.
-3. Documentación interactiva de la API: **http://localhost:8080/swagger-ui.html**
-4. Consola de la base de datos: **http://localhost:8080/h2-console** (JDBC URL `jdbc:h2:file:./data/minierp`, usuario `sa`, sin contraseña).
+3. **Usuarios de desarrollo** (se crean solos al arrancar): un administrador con `app.admin.email` / `app.admin.password` de `application.properties` y un cajero de prueba definido en `DataSeeder`. Esas contraseñas son solo para tu máquina; en producción el administrador sale de variables de entorno.
+4. Documentación interactiva de la API: **http://localhost:8080/swagger-ui.html** (pulsa *Authorize* y pega el token que devuelve `POST /api/auth/login`). En producción está desactivada.
+5. Consola de la base de datos: **http://localhost:8080/h2-console** (JDBC URL `jdbc:h2:file:./data/minierp`, usuario `sa`, sin contraseña).
 
 ### Usar MySQL (opcional)
 1. Ten MySQL corriendo (XAMPP, servicio de Windows o `docker compose up -d`).
@@ -64,7 +65,7 @@ Navegador ──▶ Vercel (frontend) ──▶ Render (backend, Docker) ──�
 3. Toma de ahí el host, el usuario (`postgres.<project-ref>`) y arma:
    `jdbc:postgresql://<HOST>:5432/postgres?sslmode=require`
 
-Las tablas se crean solas en el esquema `minierp` al primer arranque del backend.
+4. En **SQL Editor** ejecuta, en orden, los archivos de `supabase/migrations/` (esquema, RLS, semilla y tabla de usuarios). El backend no crea tablas en producción: solo verifica que coincidan (`ddl-auto=validate`).
 
 ### 2. Render (backend)
 1. **New → Web Service** → conecta el repositorio de GitHub.
@@ -77,9 +78,12 @@ Las tablas se crean solas en el esquema `minierp` al primer arranque del backend
    | `DB_USERNAME` | `postgres.<project-ref>` |
    | `DB_PASSWORD` | contraseña de la base de Supabase |
    | `APP_CORS_ALLOWED_ORIGINS` | `https://<tu-app>.vercel.app,http://localhost:3000` |
+   | `JWT_SECRET` | 32 o más caracteres aleatorios (por ejemplo, la salida de `openssl rand -base64 48`). Si lo cambias, todas las sesiones se cierran |
+   | `ADMIN_EMAIL` | correo del primer administrador |
+   | `ADMIN_PASSWORD` | su contraseña inicial (8+ caracteres, letras y números). Solo se usa si no hay usuarios; después puedes borrar estas dos variables |
 
-4. **Health Check Path** (en *Advanced*): `/api/categorias`
-5. Al terminar, prueba `https://<tu-servicio>.onrender.com/swagger-ui.html`
+4. **Health Check Path** (en *Advanced*): `/api/salud` (es la única ruta pública además del login).
+5. Al terminar, abre `https://<tu-servicio>.onrender.com/api/salud`: debe responder `{"estado":"ok"}`. Inicia sesión en el frontend con `ADMIN_EMAIL` y crea los demás usuarios en **Usuarios**.
 
 > El plan gratuito se apaga tras 15 min sin uso; la primera petición después tarda en responder mientras arranca.
 

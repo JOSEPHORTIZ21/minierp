@@ -5,7 +5,7 @@ description: Lista de verificación de seguridad e integridad para cambios en el
 
 # Backend seguro (Mini-ERP)
 
-Contexto: el navegador solo habla con la API de Spring Boot; Spring Boot es el único cliente de la base (Supabase PostgreSQL, esquema `minierp`, RLS activo sin políticas). La API **no tiene autenticación** (hallazgo A1 de `docs/auditoria.md`), así que cada endpoint debe ser seguro aunque lo invoque cualquiera.
+Contexto: el navegador solo habla con la API de Spring Boot; Spring Boot es el único cliente de la base (Supabase PostgreSQL, esquema `minierp`, RLS activo sin políticas). La API exige un token JWT y autoriza por rol (ADMIN, CAJERO) en `SecurityConfig`; aun así, cada endpoint debe validar su entrada como si lo invocara un usuario malintencionado con sesión.
 
 Antes de dar por terminado un cambio en el backend, recorre esta lista y corrige lo que no cumpla.
 
@@ -17,6 +17,12 @@ Antes de dar por terminado un cambio en el backend, recorre esta lista y corrige
 - [ ] Cada lista lleva `@NotEmpty`, `@Size(max = 100)` y `List<@Valid …>`.
 - [ ] El cliente nunca envía precios, totales, IVA, stock, estado ni números consecutivos: los calcula el servicio.
 - [ ] Los listados usan `Pageable` (tamaño máximo global de 100 en `application.properties`) o una consulta acotada; nada de `findAll()` sin límite sobre tablas que crecen.
+
+## 1b. Autorización
+- [ ] Toda ruta nueva queda en ADMIN por defecto (`anyRequest().hasRole("ADMIN")`). Si el CAJERO la necesita, agrégala explícitamente en `SecurityConfig` **y** en `frontend/src/lib/permisos.ts`, y amplía el criterio 7 de `docs/specs/autenticacion.md` y `AutenticacionIT.c7_`.
+- [ ] Nunca autorices con datos del token (claims `rol`, `nombre`) ni con datos que envía el cliente: usa las autoridades que pone `ConvertidorTokenUsuario` (leídas de la base) y `UsuarioActual.id()`.
+- [ ] Ninguna respuesta incluye `claveHash` ni contraseñas; los DTO de usuario nunca exponen la entidad.
+- [ ] Rutas públicas: solo `POST /api/auth/login` y `GET /api/salud`. No agregues otras sin justificarlo en la auditoría.
 
 ## 2. Reglas de negocio (servicio)
 - [ ] La regla vive en el servicio, no en el controlador ni solo en el frontend.
@@ -33,7 +39,7 @@ Antes de dar por terminado un cambio en el backend, recorre esta lista y corrige
 - [ ] Nunca crees políticas RLS para `anon` ni `authenticated`, ni muevas tablas al esquema `public`.
 
 ## 4. Configuración y secretos
-- [ ] Credenciales y orígenes solo por variables de entorno en `application-prod.properties` (`${DB_URL}`, …). Nada de secretos en archivos versionados, `.env.local` incluido.
+- [ ] Credenciales, `JWT_SECRET`, admin inicial y orígenes solo por variables de entorno en `application-prod.properties` (`${DB_URL}`, `${JWT_SECRET}`, …), sin valores por defecto para secretos. Los valores de `application.properties` son solo de desarrollo. Nada de secretos en archivos versionados, `.env.local` incluido.
 - [ ] La consola H2 y `show-sql` quedan desactivados en `prod`.
 - [ ] CORS: solo `/api/**`, solo los orígenes de `app.cors.allowed-origins`; nunca `*`.
 - [ ] Los logs de error no imprimen cuerpos de petición ni datos personales.

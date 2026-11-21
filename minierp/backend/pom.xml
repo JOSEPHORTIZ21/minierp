@@ -19,6 +19,12 @@
 
     <properties>
         <java.version>17</java.version>
+        <!-- La versión que trae Spring Boot 3.3.5 (1.18.34) no compila con JDK 25 -->
+        <lombok.version>1.18.42</lombok.version>
+        <!-- Mockito necesita un Byte Buddy que reconozca JDK 25 para hacer mocks de clases -->
+        <byte-buddy.version>1.17.8</byte-buddy.version>
+        <!-- 1.19.8 (la de Spring Boot 3.3.5) usa una API de Docker que Docker Engine 29 ya no acepta -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencies>
@@ -74,10 +80,59 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Pruebas de integración: PostgreSQL real en Docker con la migración de Supabase -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-testcontainers</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
+            <!-- Desde JDK 23, javac no ejecuta procesadores de anotaciones que solo estén en el classpath:
+                 Lombok debe declararse aquí o el proyecto no compila con JDK 23+. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            <!-- Las clases *IT (integración, requieren Docker) corren con "mvn verify", no con "mvn test" -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <configuration>
+                    <!-- Misma zona horaria que en producción (Dockerfile), para que el resultado no dependa de la máquina -->
+                    <argLine>-Duser.timezone=America/Bogota</argLine>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>

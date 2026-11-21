@@ -37,6 +37,16 @@ class InventarioServiceTest {
     }
 
     @Test
+    void registrarEntrada_queDesbordaElStock_lanzaReglaNegocio() {
+        producto.setStock(Integer.MAX_VALUE - 1);
+
+        assertThrows(ReglaNegocioException.class, () ->
+                inventarioService.registrarEntrada(producto, 5, ConceptoMovimiento.AJUSTE, "AJUSTE", "x"));
+        assertEquals(Integer.MAX_VALUE - 1, producto.getStock());
+        verifyNoInteractions(movimientoRepository);
+    }
+
+    @Test
     void registrarSalida_descuentaStockYGuardaMovimiento() {
         when(movimientoRepository.save(any(MovimientoInventario.class))).thenAnswer(inv -> inv.getArgument(0));
 

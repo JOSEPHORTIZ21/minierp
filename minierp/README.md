@@ -265,9 +265,11 @@ Los errores de validación incluyen además `"errores": { "campo": "mensaje" }`,
 
 ```bash
 cd backend
-mvn test
+mvn test     # unitarias (Mockito), sin base de datos
+mvn verify   # unitarias + integración: requiere Docker en ejecución
 ```
-`InventarioServiceTest` prueba con Mockito las reglas de stock, sin base de datos.
+- **Unitarias** (`*Test`): reglas de stock, anulación y límites de validación, sin base de datos.
+- **Integración** (`integracion/*IT`): levantan la aplicación completa contra PostgreSQL 16 en Docker (Testcontainers), creado con la migración de `../supabase/migrations/`, y verifican por HTTP los criterios de aceptación de `../docs/specs/`. Incluyen ventas y anulaciones simultáneas, el rollback de una venta fallida y que la migración tenga RLS en todas las tablas.
 
 ---
 

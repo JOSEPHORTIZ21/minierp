@@ -1,5 +1,6 @@
 package com.minierp.dto.compra;
 
+import com.minierp.dto.Limites;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
@@ -17,6 +18,7 @@ public record CompraRequest(
         String numeroFactura,
 
         @NotEmpty(message = "La compra debe tener al menos un producto")
+        @Size(max = Limites.ITEMS_MAXIMOS, message = "Máximo " + Limites.ITEMS_MAXIMOS + " productos por compra")
         List<@Valid ItemCompraRequest> items
 ) {
 }

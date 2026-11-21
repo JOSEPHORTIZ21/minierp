@@ -17,5 +17,7 @@ COPY --from=build /app/target/*.jar app.jar
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
-# MaxRAMPercentage ajusta la memoria de Java al límite del plan gratuito (512 MB)
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-jar", "app.jar"]
+# MaxRAMPercentage ajusta la memoria de Java al límite del plan gratuito (512 MB).
+# user.timezone: las fechas (LocalDateTime) y el "día de hoy" del dashboard van en hora de Colombia;
+# sin esto Render usa UTC y desde las 7 p. m. las ventas caen en el día siguiente.
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Duser.timezone=America/Bogota", "-jar", "app.jar"]

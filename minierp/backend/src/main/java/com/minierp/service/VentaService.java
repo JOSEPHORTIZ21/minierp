@@ -123,7 +123,10 @@ public class VentaService {
     /** Anula la venta y devuelve las unidades al inventario. */
     @Transactional
     public VentaResponse anular(Long id) {
-        Venta venta = buscar(id);
+        // Bloquea la venta: sin esto, dos anulaciones simultáneas pasaban la validación de estado
+        // y devolvían el stock dos veces.
+        Venta venta = ventaRepository.findByIdParaActualizar(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("la venta", id));
         if (venta.getEstado() == EstadoVenta.ANULADA) {
             throw new ReglaNegocioException("La venta " + venta.getNumero() + " ya está anulada");
         }

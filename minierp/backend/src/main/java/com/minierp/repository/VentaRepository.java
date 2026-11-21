@@ -5,13 +5,16 @@ import com.minierp.entity.enums.EstadoVenta;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface VentaRepository extends JpaRepository<Venta, Long> {
 
@@ -33,4 +36,9 @@ public interface VentaRepository extends JpaRepository<Venta, Long> {
     List<Venta> findByEstadoAndFechaBetween(EstadoVenta estado, LocalDateTime desde, LocalDateTime hasta);
 
     boolean existsByClienteId(Long clienteId);
+
+    /** SELECT … FOR UPDATE: dos anulaciones simultáneas de la misma venta se atienden una tras otra. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select v from Venta v where v.id = :id")
+    Optional<Venta> findByIdParaActualizar(@Param("id") Long id);
 }

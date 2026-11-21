@@ -22,8 +22,9 @@
     @apply text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline;
   }
 
+  /* text-base en móvil: con menos de 16 px, iOS amplía la página al enfocar el campo */
   .input {
-    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100;
+    @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-base outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 sm:text-sm;
   }
   .label {
     @apply mb-1 block text-sm font-medium text-slate-700;
@@ -40,5 +41,69 @@
   }
   .tabla tbody tr:hover {
     @apply bg-slate-50;
+  }
+
+  /*
+   * Tabla que en teléfonos (< 768 px) se muestra como una lista de tarjetas.
+   * Cada <td> lleva data-label con el nombre de su columna, que se muestra a la izquierda del valor.
+   * - td.celda-titulo: va primero y en grande, sin etiqueta (el dato principal de la fila).
+   * - td sin data-label: acciones, alineadas a la derecha y separadas por una línea.
+   */
+  /* Solo en pantalla: al imprimir (p. ej. la factura desde un teléfono) se conserva la tabla */
+  @media screen and (width < 48rem) {
+    .tabla-tarjetas thead {
+      display: none;
+    }
+    .tabla-tarjetas,
+    .tabla-tarjetas tbody {
+      display: block;
+    }
+    .tabla-tarjetas tr {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      border-bottom: 1px solid var(--color-slate-200);
+      padding: 0.875rem 1rem;
+    }
+    .tabla-tarjetas td {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      border: 0;
+      padding: 0;
+      text-align: right;
+      min-height: 1.75rem;
+    }
+    .tabla-tarjetas td[data-label]::before {
+      content: attr(data-label);
+      flex-shrink: 0;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
+      color: var(--color-slate-500);
+    }
+    .tabla-tarjetas td.celda-titulo {
+      order: -1;
+      display: block;
+      text-align: left;
+      font-size: 1rem;
+      padding-bottom: 0.25rem;
+    }
+    .tabla-tarjetas td.celda-titulo::before {
+      content: none;
+    }
+    .tabla-tarjetas td:not([data-label]):not(.celda-titulo):not([colspan]) {
+      justify-content: flex-end;
+      margin-top: 0.25rem;
+      border-top: 1px dashed var(--color-slate-200);
+      padding-top: 0.5rem;
+    }
+    /* Campos editables dentro de una tarjeta (carrito, compra) */
+    .tabla-tarjetas td .input {
+      width: 9rem;
+    }
   }
 }

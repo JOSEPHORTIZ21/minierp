@@ -34,14 +34,14 @@ export default function ComprasPage() {
           <Cargando />
         ) : (
           <>
-            <table className="tabla">
+            <table className="tabla tabla-tarjetas">
               <thead>
                 <tr>
                   <th>Factura</th>
                   <th>Fecha</th>
                   <th>Proveedor</th>
-                  <th className="text-right">Subtotal</th>
-                  <th className="text-right">IVA</th>
+                  <th className="text-right md:max-xl:hidden">Subtotal</th>
+                  <th className="text-right md:max-xl:hidden">IVA</th>
                   <th className="text-right">Total</th>
                 </tr>
               </thead>
@@ -49,12 +49,12 @@ export default function ComprasPage() {
                 {data.content.length === 0 && <FilaVacia columnas={6} texto="Aún no hay compras registradas" />}
                 {data.content.map((c) => (
                   <tr key={c.id}>
-                    <td className="font-mono text-xs">{c.numeroFactura}</td>
-                    <td className="whitespace-nowrap">{formatoFecha(c.fecha)}</td>
-                    <td>{c.proveedorNombre}</td>
-                    <td className="text-right">{formatoMoneda(c.subtotal)}</td>
-                    <td className="text-right">{formatoMoneda(c.totalIva)}</td>
-                    <td className="text-right font-semibold">{formatoMoneda(c.total)}</td>
+                    <td className="celda-titulo font-mono text-xs">{c.numeroFactura}</td>
+                    <td data-label="Fecha" className="whitespace-nowrap">{formatoFecha(c.fecha)}</td>
+                    <td data-label="Proveedor">{c.proveedorNombre}</td>
+                    <td data-label="Subtotal" className="text-right md:max-xl:hidden">{formatoMoneda(c.subtotal)}</td>
+                    <td data-label="IVA" className="text-right md:max-xl:hidden">{formatoMoneda(c.totalIva)}</td>
+                    <td data-label="Total" className="text-right font-semibold">{formatoMoneda(c.total)}</td>
                   </tr>
                 ))}
               </tbody>
